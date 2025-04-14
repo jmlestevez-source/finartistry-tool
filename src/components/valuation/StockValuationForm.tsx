@@ -28,23 +28,30 @@ const StockValuationForm = () => {
       return;
     }
     
+    // Limpiar espacios y convertir a mayúsculas
+    const formattedTicker = ticker.trim().toUpperCase();
+    
     setIsLoading(true);
     
     try {
       toast({
         title: "Conectando con API financiera",
-        description: "Obteniendo datos de valoración para " + ticker.toUpperCase() + "...",
+        description: "Obteniendo datos de valoración para " + formattedTicker + "...",
       });
       
-      const data = await fetchStockValuation(ticker.toUpperCase());
+      console.log("Iniciando fetchStockValuation para ticker:", formattedTicker);
+      const data = await fetchStockValuation(formattedTicker);
+      console.log("Datos recibidos:", data);
+      
       setValuationData(data);
       
       toast({
         title: "¡Datos obtenidos!",
-        description: `Se han cargado los datos de valoración para ${ticker.toUpperCase()}.`,
+        description: `Se han cargado los datos de valoración para ${formattedTicker}.`,
         variant: "default"
       });
     } catch (error) {
+      console.error("Error en valoración de acciones:", error);
       toast({
         title: "Error al obtener datos",
         description: "No pudimos obtener los datos de valoración. Por favor, verifica el ticker e intenta nuevamente.",

@@ -1,4 +1,3 @@
-
 import { toast } from "@/hooks/use-toast";
 
 // API Keys
@@ -327,7 +326,8 @@ export const fetchPortfolioData = async (
         return day.portfolio / maxPrevValue - 1;
       })),
       alpha: metrics[benchmark] ? metrics[tickers[0]].annualReturn - metrics[benchmark].annualReturn : 0,
-      beta: 1 // Por defecto
+      beta: 1, // Por defecto
+      sharpeRatio: 0 // Inicializamos aquí el sharpeRatio
     };
     
     // Calcular Sharpe Ratio del portafolio
@@ -518,7 +518,7 @@ export const fetchStockValuation = async (ticker: string) => {
     );
     
     // Calcular métricas de riesgo
-    const beta = overviewData?.Beta ? parseFloat(overviewData.Beta) : (companyInfoResponse[0].beta || 1);
+    const beta = overviewData?.Beta ? parseFloat(overviewData.Beta as string) : (companyInfoResponse[0].beta || 1);
     
     // Usar datos de volatilidad histórica para métricas de riesgo
     const dailyReturns = calculateDailyReturns(historicalPrices);
