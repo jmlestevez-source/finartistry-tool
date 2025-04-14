@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { fetchStockValuation } from "@/lib/api/financeAPI";
 import StockValuationResults from "./StockValuationResults";
+import { Loader2 } from "lucide-react";
 
 const StockValuationForm = () => {
   const [ticker, setTicker] = useState("");
@@ -30,8 +31,19 @@ const StockValuationForm = () => {
     setIsLoading(true);
     
     try {
+      toast({
+        title: "Conectando con API financiera",
+        description: "Obteniendo datos de valoración para " + ticker.toUpperCase() + "...",
+      });
+      
       const data = await fetchStockValuation(ticker.toUpperCase());
       setValuationData(data);
+      
+      toast({
+        title: "¡Datos obtenidos!",
+        description: `Se han cargado los datos de valoración para ${ticker.toUpperCase()}.`,
+        variant: "default"
+      });
     } catch (error) {
       toast({
         title: "Error al obtener datos",
@@ -55,10 +67,20 @@ const StockValuationForm = () => {
             onChange={(e) => setTicker(e.target.value)}
             required
           />
+          <p className="text-sm text-muted-foreground">
+            Ingrese el símbolo de una acción pública (por ejemplo: AAPL, MSFT, GOOG).
+          </p>
         </div>
         
         <Button type="submit" className="w-full" disabled={isLoading}>
-          {isLoading ? "Analizando..." : "Valorar Acción"}
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Analizando...
+            </>
+          ) : (
+            "Valorar Acción"
+          )}
         </Button>
       </form>
       
