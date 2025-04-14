@@ -7,12 +7,14 @@ import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { fetchStockValuation } from "@/lib/api/financeAPI";
 import StockValuationResults from "./StockValuationResults";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertTriangle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const StockValuationForm = () => {
   const [ticker, setTicker] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [valuationData, setValuationData] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
   
   const { toast } = useToast();
 
@@ -32,6 +34,7 @@ const StockValuationForm = () => {
     const formattedTicker = ticker.trim().toUpperCase();
     
     setIsLoading(true);
+    setError(null);
     
     try {
       toast({
@@ -50,11 +53,15 @@ const StockValuationForm = () => {
         description: `Se han cargado los datos de valoración para ${formattedTicker}.`,
         variant: "default"
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error en valoración de acciones:", error);
+      const errorMessage = error?.message || "Error desconocido";
+      
+      setError(`No pudimos obtener los datos de valoración: ${errorMessage}. Por favor, verifica el ticker e intenta nuevamente.`);
+      
       toast({
         title: "Error al obtener datos",
-        description: "No pudimos obtener los datos de valoración. Por favor, verifica el ticker e intenta nuevamente.",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -90,6 +97,16 @@ const StockValuationForm = () => {
           )}
         </Button>
       </form>
+      
+      {error && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>
+            {error}
+          </AlertDescription>
+        </Alert>
+      )}
       
       {valuationData && (
         <StockValuationResults data={valuationData} />

@@ -34,7 +34,7 @@ export const fetchStockValuation = async (ticker: string) => {
     // 4. Obtener tasas de crecimiento
     const growthRatesPromise = fetchFinancialData(
       `https://financialmodelingprep.com/api/v3/financial-growth/${ticker}`,
-      { apikey: FINANCIAL_MODELING_PREP_API_KEY, limit: 5 }
+      { apikey: FINANCIAL_MODELING_PREP_API_KEY, limit: "5" } // Convertido a string para corregir el error TS2322
     );
     
     // 5. Obtener promedios de la industria para comparación

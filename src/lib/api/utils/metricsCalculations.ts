@@ -47,17 +47,17 @@ export const calculateMetrics = (returns: any[]) => {
       
       // Calcular beta
       const covariance = tickerReturns.reduce((acc, val, idx) => 
-        acc + (val - mean) * (benchmarkReturns[idx] - benchmarkReturns.reduce((a, v) => a + v, 0) / benchmarkReturns.length), 0
+        acc + (val - mean) * (benchmarkReturns[idx] - benchmarkReturns.reduce((a: number, v: number) => a + v, 0) / benchmarkReturns.length), 0
       ) / (tickerReturns.length - 1);
       
-      const benchmarkVariance = benchmarkReturns.reduce((acc, val) => 
-        acc + Math.pow(val - benchmarkReturns.reduce((a, v) => a + v, 0) / benchmarkReturns.length, 2), 0
+      const benchmarkVariance = benchmarkReturns.reduce((acc: number, val: number) => 
+        acc + Math.pow(val - benchmarkReturns.reduce((a: number, v: number) => a + v, 0) / benchmarkReturns.length, 2), 0
       ) / (benchmarkReturns.length - 1);
       
       beta = covariance / benchmarkVariance;
       
       // Calcular alpha
-      const benchmarkAnnualReturn = Math.pow(1 + benchmarkReturns.reduce((acc, val) => acc + val, 0) / benchmarkReturns.length, 252) - 1;
+      const benchmarkAnnualReturn = Math.pow(1 + benchmarkReturns.reduce((acc: number, val: number) => acc + val, 0) / benchmarkReturns.length, 252) - 1;
       alpha = annualReturn - (benchmarkAnnualReturn * beta);
     }
     
@@ -80,7 +80,7 @@ export const calculateCorrelationMatrix = (returns: any[]) => {
   
   const tickerReturns: Record<string, number[]> = {};
   tickers.forEach(ticker => {
-    tickerReturns[ticker] = returns.map(day => day[ticker]).filter(val => val !== undefined);
+    tickerReturns[ticker] = returns.map(day => day[ticker]).filter(val => val !== undefined) as number[];
   });
   
   // Calcular correlación para cada par de tickers
@@ -131,7 +131,7 @@ export const calculateCorrelationMatrix = (returns: any[]) => {
 export const calculateVolatility = (returns: any[]): number => {
   if (returns.length < 2) return 0;
   
-  const dailyReturns = returns.map(day => Object.values(day)[1] || 0).filter(val => !isNaN(val));
+  const dailyReturns = returns.map(day => Object.values(day)[1] || 0).filter(val => !isNaN(Number(val))) as number[];
   
   if (dailyReturns.length < 2) return 0;
   

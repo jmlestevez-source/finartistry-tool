@@ -13,12 +13,21 @@ export const fetchFinancialData = async (endpoint: string, params: Record<string
     const response = await fetch(url.toString());
     
     if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
+      console.error(`API error: ${response.status} - ${response.statusText} for ${url.toString()}`);
+      throw new Error(`API error: ${response.status} - ${response.statusText}`);
     }
     
-    return await response.json();
+    const data = await response.json();
+    
+    // Algunas APIs devuelven errores en el cuerpo de la respuesta a pesar de un status 200
+    if (data.error) {
+      console.error(`API error in response body: ${data.error}`);
+      throw new Error(`API error: ${data.error}`);
+    }
+    
+    return data;
   } catch (error) {
-    console.error("API request failed:", error);
+    console.error(`API request failed for ${endpoint}:`, error);
     throw error;
   }
 };
@@ -37,12 +46,22 @@ export const fetchAlphaVantageData = async (function_name: string, params: Recor
     const response = await fetch(url.toString());
     
     if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
+      console.error(`Alpha Vantage API error: ${response.status} - ${response.statusText}`);
+      throw new Error(`API error: ${response.status} - ${response.statusText}`);
     }
     
-    return await response.json();
+    const data = await response.json();
+    
+    // Alpha Vantage a veces devuelve errores como "Invalid API call"
+    if (data['Error Message'] || data['Information']) {
+      const errorMessage = data['Error Message'] || data['Information'] || 'Unknown Alpha Vantage error';
+      console.error(`Alpha Vantage API error: ${errorMessage}`);
+      throw new Error(`Alpha Vantage API error: ${errorMessage}`);
+    }
+    
+    return data;
   } catch (error) {
-    console.error("Alpha Vantage API request failed:", error);
+    console.error(`Alpha Vantage API request failed for ${function_name}:`, error);
     throw error;
   }
 };
