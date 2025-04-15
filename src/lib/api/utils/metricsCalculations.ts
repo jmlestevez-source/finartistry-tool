@@ -6,20 +6,34 @@ export const calculateMetrics = (returns: any[]) => {
   const metrics: Record<string, any> = {};
   
   tickers.forEach(ticker => {
-    const tickerReturns = returns.map(day => day[ticker]).filter(val => val !== undefined);
+    const tickerReturns = returns.map(day => day[ticker]).filter(val => val !== undefined && !isNaN(val));
     
-    // Anualizar rendimiento (asumiendo que son datos diarios)
-    const annualReturn = Math.pow(1 + tickerReturns.reduce((acc, val) => acc + val, 0) / tickerReturns.length, 252) - 1;
+    // Skip calculation if there's not enough data
+    if (tickerReturns.length < 2) {
+      metrics[ticker] = {
+        annualReturn: 0,
+        volatility: 0,
+        sharpeRatio: 0,
+        maxDrawdown: 0,
+        alpha: 0,
+        beta: ticker === tickers[0] ? 1 : 0
+      };
+      return;
+    }
     
-    // Calcular volatilidad anualizada
+    // Annualize return based on available data
+    const avgDailyReturn = tickerReturns.reduce((acc, val) => acc + val, 0) / tickerReturns.length;
+    const annualReturn = Math.pow(1 + avgDailyReturn, 252) - 1;
+    
+    // Calculate annualized volatility from available data
     const mean = tickerReturns.reduce((acc, val) => acc + val, 0) / tickerReturns.length;
     const variance = tickerReturns.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) / (tickerReturns.length - 1);
     const volatility = Math.sqrt(variance) * Math.sqrt(252);
     
-    // Calcular Sharpe Ratio (asumiendo tasa libre de riesgo = 0 para simplificar)
-    const sharpeRatio = annualReturn / volatility;
+    // Calculate Sharpe Ratio (assuming risk-free rate = 0 for simplicity)
+    const sharpeRatio = volatility > 0 ? annualReturn / volatility : 0;
     
-    // Calcular drawdown máximo
+    // Calculate maximum drawdown from available data
     let maxDrawdown = 0;
     let peak = -Infinity;
     let cumulativeReturn = 1;
@@ -37,28 +51,56 @@ export const calculateMetrics = (returns: any[]) => {
       }
     }
     
-    // Extraer tasa libre de riesgo y beta del primer ticker como benchmark
+    // Default values for beta and alpha
     let alpha = 0;
     let beta = ticker === tickers[0] ? 1 : 0;
     
-    // Si no es el benchmark, calcular beta y alpha
-    if (ticker !== tickers[0]) {
-      const benchmarkReturns = returns.map(day => day[tickers[0]]).filter(val => val !== undefined);
+    // Calculate beta and alpha if this isn't the benchmark
+    if (ticker !== tickers[0] && tickers[0]) {
+      const benchmarkTickerReturns = returns
+        .map(day => day[tickers[0]])
+        .filter(val => val !== undefined && !isNaN(val));
       
-      // Calcular beta
-      const covariance = tickerReturns.reduce((acc, val, idx) => 
-        acc + (val - mean) * (benchmarkReturns[idx] - benchmarkReturns.reduce((a: number, v: number) => a + v, 0) / benchmarkReturns.length), 0
-      ) / (tickerReturns.length - 1);
-      
-      const benchmarkVariance = benchmarkReturns.reduce((acc: number, val: number) => 
-        acc + Math.pow(val - benchmarkReturns.reduce((a: number, v: number) => a + v, 0) / benchmarkReturns.length, 2), 0
-      ) / (benchmarkReturns.length - 1);
-      
-      beta = covariance / benchmarkVariance;
-      
-      // Calcular alpha
-      const benchmarkAnnualReturn = Math.pow(1 + benchmarkReturns.reduce((acc: number, val: number) => acc + val, 0) / benchmarkReturns.length, 252) - 1;
-      alpha = annualReturn - (benchmarkAnnualReturn * beta);
+      // Only calculate if there's enough benchmark data
+      if (benchmarkTickerReturns.length > 1) {
+        // For accurate calculation, we need to align the returns data
+        // Find days where both ticker and benchmark have data
+        const alignedData = returns.filter(day => 
+          day[ticker] !== undefined && !isNaN(day[ticker]) && 
+          day[tickers[0]] !== undefined && !isNaN(day[tickers[0]])
+        );
+        
+        if (alignedData.length > 1) {
+          const alignedTickerReturns = alignedData.map(day => day[ticker]);
+          const alignedBenchmarkReturns = alignedData.map(day => day[tickers[0]]);
+          
+          const tickerMean = alignedTickerReturns.reduce((sum, val) => sum + val, 0) / alignedTickerReturns.length;
+          const benchmarkMean = alignedBenchmarkReturns.reduce((sum, val) => sum + val, 0) / alignedBenchmarkReturns.length;
+          
+          // Calculate covariance
+          let covariance = 0;
+          for (let i = 0; i < alignedTickerReturns.length; i++) {
+            covariance += (alignedTickerReturns[i] - tickerMean) * (alignedBenchmarkReturns[i] - benchmarkMean);
+          }
+          covariance /= alignedTickerReturns.length;
+          
+          // Calculate benchmark variance
+          let benchmarkVariance = 0;
+          for (let i = 0; i < alignedBenchmarkReturns.length; i++) {
+            benchmarkVariance += Math.pow(alignedBenchmarkReturns[i] - benchmarkMean, 2);
+          }
+          benchmarkVariance /= alignedBenchmarkReturns.length;
+          
+          // Calculate beta
+          beta = benchmarkVariance > 0 ? covariance / benchmarkVariance : 0;
+          
+          // Annualize benchmark return
+          const annualizedBenchmarkReturn = Math.pow(1 + benchmarkMean, 252) - 1;
+          
+          // Calculate alpha
+          alpha = annualReturn - (beta * annualizedBenchmarkReturn);
+        }
+      }
     }
     
     metrics[ticker] = {
@@ -80,16 +122,18 @@ export const calculateCorrelationMatrix = (returns: any[]) => {
   
   const tickerReturns: Record<string, number[]> = {};
   tickers.forEach(ticker => {
-    tickerReturns[ticker] = returns.map(day => day[ticker]).filter(val => val !== undefined) as number[];
+    tickerReturns[ticker] = returns
+      .map(day => day[ticker])
+      .filter(val => val !== undefined && !isNaN(val));
   });
   
-  // Calcular correlación para cada par de tickers
+  // Calculate correlation for each pair of tickers
   for (let i = 0; i < tickers.length; i++) {
     for (let j = i; j < tickers.length; j++) {
       const ticker1 = tickers[i];
       const ticker2 = tickers[j];
       
-      // Si es el mismo ticker, correlación = 1
+      // If it's the same ticker, correlation = 1
       if (i === j) {
         correlationMatrix[i][j] = 1;
         continue;
@@ -98,30 +142,59 @@ export const calculateCorrelationMatrix = (returns: any[]) => {
       const returns1 = tickerReturns[ticker1];
       const returns2 = tickerReturns[ticker2];
       
-      // Calcular medias
-      const mean1 = returns1.reduce((acc, val) => acc + val, 0) / returns1.length;
-      const mean2 = returns2.reduce((acc, val) => acc + val, 0) / returns2.length;
+      // Find days where both tickers have data
+      const alignedReturns1: number[] = [];
+      const alignedReturns2: number[] = [];
       
-      // Calcular desviaciones estándar
-      const variance1 = returns1.reduce((acc, val) => acc + Math.pow(val - mean1, 2), 0) / returns1.length;
-      const variance2 = returns2.reduce((acc, val) => acc + Math.pow(val - mean2, 2), 0) / returns2.length;
+      for (const day of returns) {
+        if (day[ticker1] !== undefined && !isNaN(day[ticker1]) &&
+            day[ticker2] !== undefined && !isNaN(day[ticker2])) {
+          alignedReturns1.push(day[ticker1]);
+          alignedReturns2.push(day[ticker2]);
+        }
+      }
       
+      // If there's not enough aligned data, use 0 correlation
+      if (alignedReturns1.length < 2) {
+        correlationMatrix[i][j] = 0;
+        correlationMatrix[j][i] = 0;
+        continue;
+      }
+      
+      // Calculate means
+      const mean1 = alignedReturns1.reduce((acc, val) => acc + val, 0) / alignedReturns1.length;
+      const mean2 = alignedReturns2.reduce((acc, val) => acc + val, 0) / alignedReturns2.length;
+      
+      // Calculate variances
+      let variance1 = 0;
+      let variance2 = 0;
+      let covariance = 0;
+      
+      for (let k = 0; k < alignedReturns1.length; k++) {
+        variance1 += Math.pow(alignedReturns1[k] - mean1, 2);
+        variance2 += Math.pow(alignedReturns2[k] - mean2, 2);
+        covariance += (alignedReturns1[k] - mean1) * (alignedReturns2[k] - mean2);
+      }
+      
+      variance1 /= alignedReturns1.length;
+      variance2 /= alignedReturns2.length;
+      covariance /= alignedReturns1.length;
+      
+      // Calculate standard deviations
       const stdDev1 = Math.sqrt(variance1);
       const stdDev2 = Math.sqrt(variance2);
       
-      // Calcular covarianza
-      let covariance = 0;
-      for (let k = 0; k < returns1.length; k++) {
-        covariance += (returns1[k] - mean1) * (returns2[k] - mean2);
+      // Calculate correlation
+      let correlation = 0;
+      if (stdDev1 > 0 && stdDev2 > 0) {
+        correlation = covariance / (stdDev1 * stdDev2);
+        // Clamp correlation to [-1, 1] to handle floating point errors
+        correlation = Math.max(-1, Math.min(1, correlation));
       }
-      covariance /= returns1.length;
       
-      // Calcular correlación
-      const correlation = covariance / (stdDev1 * stdDev2);
-      
-      // Asignar valor a matriz
+      // Assign to correlation matrix (symmetric)
       correlationMatrix[i][j] = correlation;
-      correlationMatrix[j][i] = correlation; // La matriz es simétrica
+      correlationMatrix[j][i] = correlation;
     }
   }
   
@@ -131,14 +204,15 @@ export const calculateCorrelationMatrix = (returns: any[]) => {
 export const calculateVolatility = (returns: any[]): number => {
   if (returns.length < 2) return 0;
   
-  const dailyReturns = returns.map(day => Object.values(day)[1] || 0).filter(val => !isNaN(Number(val))) as number[];
+  const dailyReturns = returns.map(day => Object.values(day)[1] || 0)
+    .filter(val => !isNaN(Number(val))) as number[];
   
   if (dailyReturns.length < 2) return 0;
   
   const mean = dailyReturns.reduce((sum, val) => sum + val, 0) / dailyReturns.length;
   const variance = dailyReturns.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / (dailyReturns.length - 1);
   
-  return Math.sqrt(variance) * Math.sqrt(252); // Anualizar volatilidad
+  return Math.sqrt(variance) * Math.sqrt(252); // Annualize volatility
 };
 
 export const calculateMaxDrawdown = (priceData: any[]): number => {
@@ -162,22 +236,37 @@ export const calculateMaxDrawdown = (priceData: any[]): number => {
 };
 
 export const calculateCorrelation = (series1: number[], series2: number[]): number => {
-  // Asegurarse de que ambas series tienen la misma longitud
-  const n = Math.min(series1.length, series2.length);
+  // Make sure both series have the same length and filter out undefined/NaN values
+  const validPairs: [number, number][] = [];
+  
+  for (let i = 0; i < Math.min(series1.length, series2.length); i++) {
+    if (!isNaN(series1[i]) && !isNaN(series2[i]) && 
+        series1[i] !== undefined && series2[i] !== undefined) {
+      validPairs.push([series1[i], series2[i]]);
+    }
+  }
+  
+  const n = validPairs.length;
   if (n < 2) return 0;
   
-  // Calcular medias
-  const mean1 = series1.reduce((sum, val) => sum + val, 0) / n;
-  const mean2 = series2.reduce((sum, val) => sum + val, 0) / n;
+  // Calculate means
+  let sum1 = 0;
+  let sum2 = 0;
+  for (const [val1, val2] of validPairs) {
+    sum1 += val1;
+    sum2 += val2;
+  }
+  const mean1 = sum1 / n;
+  const mean2 = sum2 / n;
   
-  // Calcular covarianza y varianzas
+  // Calculate covariance and variances
   let covariance = 0;
   let variance1 = 0;
   let variance2 = 0;
   
-  for (let i = 0; i < n; i++) {
-    const dev1 = series1[i] - mean1;
-    const dev2 = series2[i] - mean2;
+  for (const [val1, val2] of validPairs) {
+    const dev1 = val1 - mean1;
+    const dev2 = val2 - mean2;
     covariance += dev1 * dev2;
     variance1 += dev1 * dev1;
     variance2 += dev2 * dev2;
@@ -190,8 +279,10 @@ export const calculateCorrelation = (series1: number[], series2: number[]): numb
   const stdDev1 = Math.sqrt(variance1);
   const stdDev2 = Math.sqrt(variance2);
   
-  // Evitar división por cero
+  // Avoid division by zero
   if (stdDev1 === 0 || stdDev2 === 0) return 0;
   
-  return covariance / (stdDev1 * stdDev2);
+  // Calculate and clamp correlation to handle floating point errors
+  const correlation = covariance / (stdDev1 * stdDev2);
+  return Math.max(-1, Math.min(1, correlation));
 };
