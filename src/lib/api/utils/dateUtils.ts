@@ -18,8 +18,8 @@ export const calculateStartDate = (period: string): string => {
     case '10y':
       startDate = new Date(today.getFullYear() - 10, today.getMonth(), today.getDate());
       break;
-    case 'max':
-      startDate = new Date(1990, 0, 1);
+    case '30y':
+      startDate = new Date(today.getFullYear() - 30, today.getMonth(), today.getDate());
       break;
     default:
       startDate = new Date(today.getFullYear() - 5, today.getMonth(), today.getDate());

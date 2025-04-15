@@ -16,6 +16,13 @@ import { fetchPortfolioData } from "@/lib/api/financeAPI";
 import { Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const PortfolioAnalysisForm = () => {
   const [tickers, setTickers] = useState("");
@@ -141,18 +148,18 @@ const PortfolioAnalysisForm = () => {
           
           <div className="space-y-2">
             <Label htmlFor="period">Período</Label>
-            <select
-              id="period"
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-              value={period}
-              onChange={(e) => setPeriod(e.target.value)}
-            >
-              <option value="1y">1 año</option>
-              <option value="3y">3 años</option>
-              <option value="5y">5 años</option>
-              <option value="10y">10 años</option>
-              <option value="max">Máximo</option>
-            </select>
+            <Select value={period} onValueChange={setPeriod}>
+              <SelectTrigger id="period">
+                <SelectValue placeholder="Seleccione un período" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1y">1 año</SelectItem>
+                <SelectItem value="3y">3 años</SelectItem>
+                <SelectItem value="5y">5 años</SelectItem>
+                <SelectItem value="10y">10 años</SelectItem>
+                <SelectItem value="30y">30 años</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
         
