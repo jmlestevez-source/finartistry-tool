@@ -3,7 +3,12 @@
 
 import { FINANCIAL_MODELING_PREP_API_KEY } from '../constants';
 import { fetchFinancialData } from '../utils/apiUtils';
-import { calculateStartDate, getTodayDate } from '../utils/dateUtils';
+import { 
+  calculateStartDate, 
+  getTodayDate, 
+  calculateAnnualizedReturn,
+  getActualDataPeriodYears
+} from '../utils/dateUtils';
 import { 
   transformFMPHistoricalData,
   calculateDailyReturns,
@@ -22,17 +27,6 @@ export const fetchPortfolioData = async (
 ) => {
   try {
     console.log(`Fetching portfolio data for ${tickers.join(', ')} with benchmark ${benchmark} for period ${period}`);
-    
-    // Convertir periodo en un formato compatible con la API
-    let timeFrame;
-    switch(period) {
-      case '1y': timeFrame = '1year'; break;
-      case '3y': timeFrame = '3year'; break;
-      case '5y': timeFrame = '5year'; break;
-      case '10y': timeFrame = '10year'; break;
-      case '30y': timeFrame = '30year'; break;
-      default: timeFrame = '5year';
-    }
     
     // Incluir el benchmark en la lista de tickers si no está ya
     let allTickers = tickers;
@@ -56,10 +50,13 @@ export const fetchPortfolioData = async (
     
     // Procesar y combinar datos históricos
     let combinedData: any = {};
+    const tickersWithData: string[] = [];
+    
     historicalDataResponses.forEach((response, index) => {
       const ticker = allTickers[index];
-      if (response && response.historical) {
+      if (response && response.historical && response.historical.length > 0) {
         const transformedData = transformFMPHistoricalData(response.historical, ticker);
+        tickersWithData.push(ticker);
         
         transformedData.forEach((item: any) => {
           if (!combinedData[item.date]) {
@@ -67,6 +64,8 @@ export const fetchPortfolioData = async (
           }
           combinedData[item.date][ticker] = item[ticker];
         });
+      } else {
+        console.warn(`No historical data available for ${ticker}`);
       }
     });
     
@@ -111,6 +110,9 @@ export const fetchPortfolioData = async (
       };
     });
     
+    // Calcular métricas (rendimiento anual, volatilidad, etc.)
+    const metrics = calculateMetrics(dailyReturns);
+    
     // Inicializar las métricas del portafolio antes de usarlas
     const portfolioMetrics = {
       annualReturn: 0,
@@ -121,20 +123,29 @@ export const fetchPortfolioData = async (
       beta: 1
     };
     
-    // Calcular métricas (rendimiento anual, volatilidad, etc.)
-    const metrics = calculateMetrics(dailyReturns);
-    
-    // Verificar que las métricas se calcularon correctamente para todos los tickers
+    // Para cada ticker que no tiene métricas calculadas, calcular manualmente
+    // basado en los datos disponibles
     allTickers.forEach(ticker => {
-      if (!metrics[ticker]) {
-        metrics[ticker] = {
-          annualReturn: 0,
-          volatility: 0,
-          sharpeRatio: 0,
-          maxDrawdown: 0,
-          beta: ticker === benchmark ? 1 : 0,
-        };
-        console.warn(`No se pudieron calcular métricas para ${ticker}, usando valores por defecto`);
+      if (!metrics[ticker] || metrics[ticker].annualReturn === 0) {
+        const annualReturn = calculateAnnualizedReturn(dailyReturns, ticker);
+        
+        if (!metrics[ticker]) {
+          metrics[ticker] = {
+            annualReturn: annualReturn,
+            volatility: 0,
+            sharpeRatio: 0,
+            maxDrawdown: 0,
+            beta: ticker === benchmark ? 1 : 0,
+            alpha: 0
+          };
+        } else {
+          metrics[ticker].annualReturn = annualReturn;
+        }
+        
+        // Si todavía es 0, puede que no haya suficientes datos
+        if (metrics[ticker].annualReturn === 0) {
+          console.warn(`No se pudieron calcular métricas para ${ticker}, usando valores por defecto`);
+        }
       }
     });
     
@@ -192,6 +203,7 @@ export const fetchPortfolioData = async (
           sharpeRatio: 0,
           maxDrawdown: 0,
           beta: ticker === benchmark ? 1 : 0,
+          alpha: 0
         }])
       )
     };

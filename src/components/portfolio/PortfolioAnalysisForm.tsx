@@ -83,6 +83,20 @@ const PortfolioAnalysisForm = () => {
       });
       
       const data = await fetchPortfolioData(tickersList, weightsList, benchmark, period);
+      
+      // Verificar si alguna acción tiene un rendimiento de 0
+      const zeroReturnStocks = Object.entries(data.stockMetrics)
+        .filter(([ticker, metrics]: [string, any]) => metrics.annualReturn === 0 && ticker !== benchmark)
+        .map(([ticker]: [string, any]) => ticker);
+      
+      if (zeroReturnStocks.length > 0) {
+        toast({
+          title: "Advertencia",
+          description: `Es posible que no haya suficientes datos para ${zeroReturnStocks.join(', ')} en el período ${period}. Los cálculos pueden no ser precisos.`,
+          variant: "default"
+        });
+      }
+      
       setPortfolioData(data);
       
       toast({

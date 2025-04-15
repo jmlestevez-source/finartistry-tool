@@ -31,3 +31,35 @@ export const calculateStartDate = (period: string): string => {
 export const getTodayDate = (): string => {
   return new Date().toISOString().split('T')[0];
 };
+
+// Calculate annualized returns based on actual data period
+export const calculateAnnualizedReturn = (
+  dailyReturns: any[], 
+  ticker: string
+): number => {
+  const tickerReturns = dailyReturns
+    .map(day => day[ticker])
+    .filter(val => val !== undefined);
+  
+  if (tickerReturns.length === 0) return 0;
+  
+  // Average daily return
+  const avgDailyReturn = tickerReturns.reduce((acc, val) => acc + val, 0) / tickerReturns.length;
+  
+  // Annualize (assuming 252 trading days per year)
+  return Math.pow(1 + avgDailyReturn, 252) - 1;
+};
+
+// Get the actual data period in years based on available data
+export const getActualDataPeriodYears = (historicalData: any[]): number => {
+  if (historicalData.length < 2) return 0;
+  
+  const firstDate = new Date(historicalData[0].date);
+  const lastDate = new Date(historicalData[historicalData.length - 1].date);
+  
+  // Calculate difference in years
+  const diffTime = Math.abs(lastDate.getTime() - firstDate.getTime());
+  const diffYears = diffTime / (1000 * 60 * 60 * 24 * 365.25);
+  
+  return diffYears;
+};
