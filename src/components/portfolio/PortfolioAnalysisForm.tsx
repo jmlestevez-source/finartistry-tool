@@ -13,6 +13,9 @@ import {
 } from "@/components/ui/card";
 import { PortfolioAnalysisResults } from "./PortfolioAnalysisResults";
 import { fetchPortfolioData } from "@/lib/api/financeAPI";
+import { Loader2 } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
 
 const PortfolioAnalysisForm = () => {
   const [tickers, setTickers] = useState("");
@@ -21,11 +24,13 @@ const PortfolioAnalysisForm = () => {
   const [period, setPeriod] = useState("5y");
   const [isLoading, setIsLoading] = useState(false);
   const [portfolioData, setPortfolioData] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
   
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     
     const tickersList = tickers.split(",").map(t => t.trim().toUpperCase());
     
@@ -65,12 +70,28 @@ const PortfolioAnalysisForm = () => {
     setIsLoading(true);
     
     try {
+      toast({
+        title: "Conectando con API financiera",
+        description: `Obteniendo datos para ${tickersList.join(', ')} en período ${period}...`,
+      });
+      
       const data = await fetchPortfolioData(tickersList, weightsList, benchmark, period);
       setPortfolioData(data);
-    } catch (error) {
+      
+      toast({
+        title: "¡Datos obtenidos!",
+        description: `Se han cargado los datos de la cartera.`,
+        variant: "default"
+      });
+    } catch (error: any) {
+      console.error("Error fetching portfolio data:", error);
+      const errorMessage = error?.message || "Error desconocido";
+      
+      setError(`No pudimos obtener los datos de la cartera: ${errorMessage}`);
+      
       toast({
         title: "Error al obtener datos",
-        description: "No pudimos obtener los datos de la cartera. Por favor, verifica los tickers e intenta nuevamente.",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -136,9 +157,26 @@ const PortfolioAnalysisForm = () => {
         </div>
         
         <Button type="submit" className="w-full" disabled={isLoading}>
-          {isLoading ? "Analizando..." : "Analizar Cartera"}
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Analizando...
+            </>
+          ) : (
+            "Analizar Cartera"
+          )}
         </Button>
       </form>
+      
+      {error && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>
+            {error}
+          </AlertDescription>
+        </Alert>
+      )}
       
       {portfolioData && (
         <PortfolioAnalysisResults data={portfolioData} />
