@@ -26,7 +26,7 @@ const PortfolioOptimizerForm = () => {
   const [weights, setWeights] = useState("");
   const [universe, setUniverse] = useState("");
   const [period, setPeriod] = useState("5y");
-  const [optimizerModel, setOptimizerModel] = useState<OptimizerModel>(OptimizerModel.MAXIMUM_SHARPE);
+  const [optimizerModel, setOptimizerModel] = useState<OptimizerModel>(OptimizerModel.MAX_SHARPE);
   const [isLoading, setIsLoading] = useState(false);
   const [optimizerData, setOptimizerData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
@@ -85,11 +85,15 @@ const PortfolioOptimizerForm = () => {
         description: `Calculando pesos óptimos para ${tickersList.join(', ')}...`,
       });
       
+      // Crear un array vacío para los datos históricos como placeholder
+      // El servicio real obtendría estos datos de la API
+      const historicalReturns: any[] = [];
+      
       const data = await fetchOptimizedPortfolio(
         tickersList, 
         weightsList, 
         optimizerModel, 
-        period, 
+        historicalReturns, 
         universeList
       );
       
@@ -169,8 +173,8 @@ const PortfolioOptimizerForm = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={OptimizerModel.MEAN_VARIANCE}>Media-Varianza (Markowitz)</SelectItem>
-                <SelectItem value={OptimizerModel.MINIMUM_VOLATILITY}>Mínima Volatilidad</SelectItem>
-                <SelectItem value={OptimizerModel.MAXIMUM_SHARPE}>Máximo Sharpe</SelectItem>
+                <SelectItem value={OptimizerModel.MIN_VOLATILITY}>Mínima Volatilidad</SelectItem>
+                <SelectItem value={OptimizerModel.MAX_SHARPE}>Máximo Sharpe</SelectItem>
                 <SelectItem value={OptimizerModel.RISK_PARITY}>Paridad de Riesgo</SelectItem>
                 <SelectItem value={OptimizerModel.EQUAL_WEIGHT}>Pesos Iguales</SelectItem>
               </SelectContent>
@@ -217,7 +221,7 @@ const PortfolioOptimizerForm = () => {
       )}
       
       {optimizerData && (
-        <PortfolioOptimizerResults data={optimizerData} />
+        <PortfolioOptimizerResults data={optimizerData} model={optimizerModel} />
       )}
     </div>
   );
