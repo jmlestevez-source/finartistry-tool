@@ -14,15 +14,22 @@ export const fetchFinancialData = async (endpoint: string, params: Record<string
     
     if (!response.ok) {
       console.error(`API error: ${response.status} - ${response.statusText} for ${url.toString()}`);
+      
+      // Manejo específico para error de límite de peticiones
+      if (response.status === 429) {
+        throw new Error("Se ha alcanzado el límite de peticiones de la API. Por favor, inténtalo más tarde.");
+      }
+      
       throw new Error(`API error: ${response.status} - ${response.statusText}`);
     }
     
     const data = await response.json();
     
     // Algunas APIs devuelven errores en el cuerpo de la respuesta a pesar de un status 200
-    if (data.error) {
-      console.error(`API error in response body: ${data.error}`);
-      throw new Error(`API error: ${data.error}`);
+    if (data.error || data["Error Message"]) {
+      const errorMessage = data.error || data["Error Message"] || "Error desconocido en la respuesta";
+      console.error(`API error in response body: ${errorMessage}`);
+      throw new Error(`API error: ${errorMessage}`);
     }
     
     return data;

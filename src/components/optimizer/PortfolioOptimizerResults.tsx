@@ -127,6 +127,14 @@ export const PortfolioOptimizerResults: React.FC<PortfolioOptimizerResultsProps>
     }
   };
   
+  // Calcular altura dinámica para el gráfico basado en cantidad de tickers
+  const getChartHeight = () => {
+    // Base height + additional height per ticker after 5
+    const baseHeight = 300;
+    const additionalHeight = Math.max(0, tickers.length - 5) * 20;
+    return baseHeight + additionalHeight;
+  };
+  
   return (
     <div className="space-y-6 mt-8">
       <h3 className="text-2xl font-bold">Resultados de la Optimización</h3>
@@ -231,7 +239,7 @@ export const PortfolioOptimizerResults: React.FC<PortfolioOptimizerResultsProps>
           <CardDescription>Pesos actuales vs. optimizados</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="h-80">
+          <div className={`h-[${getChartHeight()}px]`} style={{ height: getChartHeight() }}>
             <ChartContainer 
               config={{ 
                 current: { color: "#3b82f6" },
@@ -241,13 +249,13 @@ export const PortfolioOptimizerResults: React.FC<PortfolioOptimizerResultsProps>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={weightsComparisonData}
-                  margin={{ top: 5, right: 30, left: 20, bottom: 30 }}
+                  margin={{ top: 5, right: 30, left: 20, bottom: tickers.length > 8 ? 60 : 40 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis 
                     dataKey="name" 
                     tickMargin={15}
-                    height={60}
+                    height={tickers.length > 8 ? 80 : 60}
                     interval={0}
                     tick={(props) => {
                       const { x, y, payload } = props;
@@ -288,7 +296,7 @@ export const PortfolioOptimizerResults: React.FC<PortfolioOptimizerResultsProps>
             </ChartContainer>
           </div>
           
-          <div className="mt-4">
+          <div className="mt-6">
             <Table>
               <TableHeader>
                 <TableRow>
