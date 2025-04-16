@@ -1,3 +1,4 @@
+
 import React from "react";
 import {
   Card,
@@ -212,7 +213,7 @@ export const PortfolioOptimizerResults: React.FC<PortfolioOptimizerResultsProps>
                     <XAxis type="number" />
                     <YAxis dataKey="name" type="category" />
                     <ChartTooltip content={<ChartTooltipContent />} />
-                    <Legend />
+                    <Legend wrapperStyle={{ paddingTop: 15 }} />
                     <Bar dataKey="current" name="Actual" fill="#3b82f6" />
                     <Bar dataKey="optimized" name="Optimizada" fill="#22c55e" />
                   </BarChart>
@@ -240,16 +241,46 @@ export const PortfolioOptimizerResults: React.FC<PortfolioOptimizerResultsProps>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={weightsComparisonData}
-                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                  margin={{ top: 5, right: 30, left: 20, bottom: 30 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
+                  <XAxis 
+                    dataKey="name" 
+                    tickMargin={15}
+                    height={60}
+                    interval={0}
+                    tick={(props) => {
+                      const { x, y, payload } = props;
+                      const tickCount = weightsComparisonData.length;
+                      // Si hay muchos tickers, rotar las etiquetas
+                      const rotate = tickCount > 5 ? -45 : 0;
+                      const textAnchor = tickCount > 5 ? "end" : "middle";
+                      const verticalAnchor = tickCount > 5 ? "middle" : "start";
+                      const tickY = tickCount > 5 ? y + 8 : y + 10;
+
+                      return (
+                        <g transform={`translate(${x},${tickY})`}>
+                          <text
+                            x={0}
+                            y={0}
+                            dy={0}
+                            textAnchor={textAnchor}
+                            fill="#666"
+                            fontSize={12}
+                            transform={`rotate(${rotate})`}
+                          >
+                            {payload.value}
+                          </text>
+                        </g>
+                      );
+                    }}
+                  />
                   <YAxis tickFormatter={(value) => `${(value * 100).toFixed(0)}%`} />
                   <ChartTooltip 
                     formatter={(value: number) => `${(value * 100).toFixed(2)}%`}
                     content={<ChartTooltipContent />}
                   />
-                  <Legend />
+                  <Legend wrapperStyle={{ paddingTop: 15 }} />
                   <Bar dataKey="current" name="Actual" fill="#3b82f6" />
                   <Bar dataKey="optimized" name="Optimizada" fill="#22c55e" />
                 </BarChart>
