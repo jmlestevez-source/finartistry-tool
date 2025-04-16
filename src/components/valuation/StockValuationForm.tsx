@@ -42,11 +42,101 @@ const StockValuationForm = () => {
       });
       
       console.log("Iniciando valoración para ticker:", formattedTicker);
-      // Placeholder for actual API call - this service is no longer available
-      const data = { ticker: formattedTicker, price: 0, metrics: {} };
-      console.log("Datos recibidos:", data);
       
-      setValuationData(data);
+      // Simulación de datos de valoración para demostración
+      const mockData = {
+        ticker: formattedTicker,
+        companyInfo: {
+          name: `${formattedTicker} Corporation`,
+          sector: "Tecnología",
+          industry: "Software",
+          marketCap: 500000000000,
+          currentPrice: 150.75
+        },
+        valuationModels: [
+          { name: "DCF", fairValue: 170.25, upside: 0.13, description: "Flujos de caja descontados" },
+          { name: "P/E", fairValue: 165.30, upside: 0.10, description: "Múltiplo de beneficios" },
+          { name: "P/B", fairValue: 155.50, upside: 0.03, description: "Múltiplo de valor contable" },
+          { name: "EV/EBITDA", fairValue: 172.80, upside: 0.15, description: "Múltiplo de EBITDA" },
+          { name: "DDM", fairValue: 160.40, upside: 0.06, description: "Modelo de descuento de dividendos" }
+        ],
+        historicalPrices: Array.from({ length: 12 }, (_, i) => ({
+          date: `${2023}-${(i + 1).toString().padStart(2, '0')}`,
+          price: 120 + Math.random() * 60
+        })),
+        financialRatios: [
+          { name: "P/E", value: 25.3, industryAvg: 22.1 },
+          { name: "P/B", value: 8.7, industryAvg: 6.5 },
+          { name: "P/S", value: 12.4, industryAvg: 10.2 },
+          { name: "ROE", value: 0.35, industryAvg: 0.28 },
+          { name: "ROA", value: 0.18, industryAvg: 0.15 },
+          { name: "Margen neto", value: 0.21, industryAvg: 0.18 }
+        ],
+        growthRates: {
+          revenue: {
+            oneYear: 0.18,
+            threeYear: 0.15,
+            fiveYear: 0.13,
+            projected: 0.12
+          },
+          earnings: {
+            oneYear: 0.22,
+            threeYear: 0.19,
+            fiveYear: 0.16,
+            projected: 0.14
+          },
+          freeCashFlow: {
+            oneYear: 0.20,
+            threeYear: 0.17,
+            fiveYear: 0.15,
+            projected: 0.13
+          },
+          drivers: [
+            { name: "Innovación", contribution: 0.35 },
+            { name: "Expansión mercado", contribution: 0.25 },
+            { name: "Adquisiciones", contribution: 0.20 },
+            { name: "Eficiencia operativa", contribution: 0.15 },
+            { name: "Otros", contribution: 0.05 }
+          ]
+        },
+        riskMetrics: {
+          beta: 1.25,
+          volatility: 0.22,
+          sharpeRatio: 1.3,
+          maxDrawdown: 0.28,
+          valueAtRisk: 0.04,
+          correlations: [
+            { name: "S&P 500", value: 0.82 },
+            { name: "NASDAQ", value: 0.89 },
+            { name: "Sector Tech", value: 0.93 },
+            { name: "Bonos 10Y", value: -0.35 }
+          ],
+          riskFactors: [
+            { 
+              name: "Competencia", 
+              level: "Medio", 
+              description: "Competencia creciente en su segmento principal pero con ventajas competitivas sólidas." 
+            },
+            { 
+              name: "Regulación", 
+              level: "Alto", 
+              description: "Riesgo elevado de cambios regulatorios que podrían afectar su modelo de negocio." 
+            },
+            { 
+              name: "Tecnología", 
+              level: "Bajo", 
+              description: "Fuerte inversión en I+D y posición de liderazgo en innovación tecnológica." 
+            },
+            { 
+              name: "Financiero", 
+              level: "Bajo", 
+              description: "Balance sólido con baja deuda y alta generación de caja." 
+            }
+          ]
+        }
+      };
+      
+      setValuationData(mockData);
       
       toast({
         title: "¡Datos obtenidos!",

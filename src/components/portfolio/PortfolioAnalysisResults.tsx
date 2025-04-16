@@ -125,33 +125,38 @@ export const PortfolioAnalysisResults: React.FC<PortfolioAnalysisResultsProps> =
         </CardHeader>
         <CardContent>
           <div className="h-96">
-            <ChartContainer 
-              config={{ 
-                portfolio: { color: "#22c55e" },
-                benchmark: { color: "#3b82f6" }
-              }}
-            >
-              <LineChart data={performanceChart}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Legend />
-                <Line 
-                  type="monotone" 
-                  dataKey="portfolio" 
-                  stroke="#22c55e" 
-                  activeDot={{ r: 8 }} 
-                  name="Cartera" 
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="benchmark" 
-                  stroke="#3b82f6" 
-                  name="Benchmark" 
-                />
-              </LineChart>
-            </ChartContainer>
+            <ResponsiveContainer width="100%" height="100%">
+              <ChartContainer 
+                config={{ 
+                  portfolio: { color: "#22c55e" },
+                  benchmark: { color: "#3b82f6" }
+                }}
+              >
+                <LineChart 
+                  data={performanceChart}
+                  margin={{ top: 10, right: 30, left: 20, bottom: 20 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" tickMargin={10} />
+                  <YAxis />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Legend wrapperStyle={{ paddingTop: 15 }} />
+                  <Line 
+                    type="monotone" 
+                    dataKey="portfolio" 
+                    stroke="#22c55e" 
+                    activeDot={{ r: 8 }} 
+                    name="Cartera" 
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="benchmark" 
+                    stroke="#3b82f6" 
+                    name="Benchmark" 
+                  />
+                </LineChart>
+              </ChartContainer>
+            </ResponsiveContainer>
           </div>
         </CardContent>
       </Card>
@@ -197,7 +202,7 @@ export const PortfolioAnalysisResults: React.FC<PortfolioAnalysisResultsProps> =
           <CardDescription>Diversificación entre activos</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto pb-4">
             <table className="w-full">
               <thead>
                 <tr className="border-b">

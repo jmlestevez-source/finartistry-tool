@@ -6,7 +6,6 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  CardFooter,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
@@ -26,7 +25,8 @@ import {
   Line,
   PieChart,
   Pie,
-  Cell
+  Cell,
+  ResponsiveContainer
 } from "recharts";
 
 interface CompanyInfo {
@@ -128,29 +128,37 @@ const StockValuationResults: React.FC<StockValuationResultsProps> = ({ data }) =
                     <CardDescription>Comparación de valores justos estimados</CardDescription>
                   </CardHeader>
                   <CardContent className="pt-0">
-                    <div className="h-80">
-                      <ChartContainer 
-                        config={{ 
-                          bar: { color: "#3b82f6" },
-                          price: { color: "#ef4444" }
-                        }}
-                      >
-                        <BarChart
-                          data={valuationModels.map(model => ({
-                            name: model.name,
-                            value: model.fairValue,
-                            upside: model.upside
-                          }))}
-                          margin={{ top: 20, right: 30, left: 20, bottom: 50 }}
+                    <div className="h-96">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <ChartContainer 
+                          config={{ 
+                            bar: { color: "#3b82f6" },
+                            price: { color: "#ef4444" }
+                          }}
                         >
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="name" angle={-45} textAnchor="end" />
-                          <YAxis />
-                          <ChartTooltip content={<ChartTooltipContent />} />
-                          <Bar dataKey="value" name="Valor Justo" />
-                          <Legend />
-                        </BarChart>
-                      </ChartContainer>
+                          <BarChart
+                            data={valuationModels.map(model => ({
+                              name: model.name,
+                              value: model.fairValue,
+                              upside: model.upside
+                            }))}
+                            margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis 
+                              dataKey="name" 
+                              angle={-45} 
+                              textAnchor="end"
+                              height={60}
+                              tickMargin={10}
+                            />
+                            <YAxis />
+                            <ChartTooltip content={<ChartTooltipContent />} />
+                            <Bar dataKey="value" name="Valor Justo" />
+                            <Legend wrapperStyle={{ bottom: 0, paddingTop: 10 }} />
+                          </BarChart>
+                        </ChartContainer>
+                      </ResponsiveContainer>
                     </div>
                   </CardContent>
                 </Card>
@@ -194,27 +202,32 @@ const StockValuationResults: React.FC<StockValuationResultsProps> = ({ data }) =
                   <CardTitle className="text-lg">Precio Histórico</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-72">
-                    <ChartContainer 
-                      config={{ 
-                        price: { color: "#3b82f6" }
-                      }}
-                    >
-                      <LineChart data={historicalPrices}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="date" />
-                        <YAxis />
-                        <ChartTooltip content={<ChartTooltipContent />} />
-                        <Legend />
-                        <Line 
-                          type="monotone" 
-                          dataKey="price" 
-                          stroke="#3b82f6" 
-                          activeDot={{ r: 8 }} 
-                          name="Precio" 
-                        />
-                      </LineChart>
-                    </ChartContainer>
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <ChartContainer 
+                        config={{ 
+                          price: { color: "#3b82f6" }
+                        }}
+                      >
+                        <LineChart 
+                          data={historicalPrices}
+                          margin={{ top: 5, right: 30, left: 20, bottom: 20 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="date" tickMargin={10} />
+                          <YAxis />
+                          <ChartTooltip content={<ChartTooltipContent />} />
+                          <Legend wrapperStyle={{ paddingTop: 10 }} />
+                          <Line 
+                            type="monotone" 
+                            dataKey="price" 
+                            stroke="#3b82f6" 
+                            activeDot={{ r: 8 }} 
+                            name="Precio" 
+                          />
+                        </LineChart>
+                      </ChartContainer>
+                    </ResponsiveContainer>
                   </div>
                 </CardContent>
               </Card>
@@ -229,39 +242,43 @@ const StockValuationResults: React.FC<StockValuationResultsProps> = ({ data }) =
                     <CardDescription>Comparado con el promedio del sector</CardDescription>
                   </CardHeader>
                   <CardContent className="pt-0">
-                    <div className="h-80">
-                      <ChartContainer 
-                        config={{ 
-                          company: { color: "#3b82f6" },
-                          industry: { color: "#6b7280" }
-                        }}
-                      >
-                        <BarChart
-                          data={financialRatios}
-                          layout="vertical"
-                          margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
+                    <div className="h-96">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <ChartContainer 
+                          config={{ 
+                            company: { color: "#3b82f6" },
+                            industry: { color: "#6b7280" }
+                          }}
                         >
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis type="number" />
-                          <YAxis 
-                            type="category" 
-                            dataKey="name" 
-                            width={100} 
-                          />
-                          <ChartTooltip content={<ChartTooltipContent />} />
-                          <Legend />
-                          <Bar 
-                            dataKey="value" 
-                            name="Empresa" 
-                            fill="#3b82f6"
-                          />
-                          <Bar 
-                            dataKey="industryAvg" 
-                            name="Industria" 
-                            fill="#6b7280"
-                          />
-                        </BarChart>
-                      </ChartContainer>
+                          <BarChart
+                            data={financialRatios}
+                            layout="vertical"
+                            margin={{ top: 5, right: 30, left: 120, bottom: 20 }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis type="number" />
+                            <YAxis 
+                              type="category" 
+                              dataKey="name" 
+                              width={110} 
+                              tick={{ fontSize: 12 }}
+                              tickMargin={5}
+                            />
+                            <ChartTooltip content={<ChartTooltipContent />} />
+                            <Legend wrapperStyle={{ paddingTop: 10 }} />
+                            <Bar 
+                              dataKey="value" 
+                              name="Empresa" 
+                              fill="#3b82f6"
+                            />
+                            <Bar 
+                              dataKey="industryAvg" 
+                              name="Industria" 
+                              fill="#6b7280"
+                            />
+                          </BarChart>
+                        </ChartContainer>
+                      </ResponsiveContainer>
                     </div>
                   </CardContent>
                 </Card>
@@ -304,55 +321,58 @@ const StockValuationResults: React.FC<StockValuationResultsProps> = ({ data }) =
                     <CardDescription>Histórico y proyectado</CardDescription>
                   </CardHeader>
                   <CardContent className="pt-0">
-                    <div className="h-80">
-                      <ChartContainer 
-                        config={{ 
-                          revenue: { color: "#3b82f6" },
-                          earnings: { color: "#22c55e" },
-                          fcf: { color: "#f59e0b" }
-                        }}
-                      >
-                        <BarChart
-                          data={[
-                            { 
-                              name: "1 año", 
-                              revenue: growthRates.revenue.oneYear, 
-                              earnings: growthRates.earnings.oneYear,
-                              fcf: growthRates.freeCashFlow.oneYear
-                            },
-                            { 
-                              name: "3 años", 
-                              revenue: growthRates.revenue.threeYear, 
-                              earnings: growthRates.earnings.threeYear,
-                              fcf: growthRates.freeCashFlow.threeYear
-                            },
-                            { 
-                              name: "5 años", 
-                              revenue: growthRates.revenue.fiveYear, 
-                              earnings: growthRates.earnings.fiveYear,
-                              fcf: growthRates.freeCashFlow.fiveYear
-                            },
-                            { 
-                              name: "Proyectado", 
-                              revenue: growthRates.revenue.projected, 
-                              earnings: growthRates.earnings.projected,
-                              fcf: growthRates.freeCashFlow.projected
-                            },
-                          ]}
+                    <div className="h-96">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <ChartContainer 
+                          config={{ 
+                            revenue: { color: "#3b82f6" },
+                            earnings: { color: "#22c55e" },
+                            fcf: { color: "#f59e0b" }
+                          }}
                         >
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="name" />
-                          <YAxis tickFormatter={(value) => `${(value * 100).toFixed(0)}%`} />
-                          <ChartTooltip 
-                            content={<ChartTooltipContent />}
-                            formatter={(value: any) => `${(value * 100).toFixed(2)}%`}
-                          />
-                          <Legend />
-                          <Bar dataKey="revenue" name="Ingresos" fill="#3b82f6" />
-                          <Bar dataKey="earnings" name="Beneficios" fill="#22c55e" />
-                          <Bar dataKey="fcf" name="Flujo de Caja Libre" fill="#f59e0b" />
-                        </BarChart>
-                      </ChartContainer>
+                          <BarChart
+                            data={[
+                              { 
+                                name: "1 año", 
+                                revenue: growthRates.revenue.oneYear, 
+                                earnings: growthRates.earnings.oneYear,
+                                fcf: growthRates.freeCashFlow.oneYear
+                              },
+                              { 
+                                name: "3 años", 
+                                revenue: growthRates.revenue.threeYear, 
+                                earnings: growthRates.earnings.threeYear,
+                                fcf: growthRates.freeCashFlow.threeYear
+                              },
+                              { 
+                                name: "5 años", 
+                                revenue: growthRates.revenue.fiveYear, 
+                                earnings: growthRates.earnings.fiveYear,
+                                fcf: growthRates.freeCashFlow.fiveYear
+                              },
+                              { 
+                                name: "Proyectado", 
+                                revenue: growthRates.revenue.projected, 
+                                earnings: growthRates.earnings.projected,
+                                fcf: growthRates.freeCashFlow.projected
+                              },
+                            ]}
+                            margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="name" tickMargin={10} />
+                            <YAxis tickFormatter={(value) => `${(value * 100).toFixed(0)}%`} />
+                            <ChartTooltip 
+                              content={<ChartTooltipContent />}
+                              formatter={(value: any) => `${(value * 100).toFixed(2)}%`}
+                            />
+                            <Legend wrapperStyle={{ paddingTop: 10 }} />
+                            <Bar dataKey="revenue" name="Ingresos" fill="#3b82f6" />
+                            <Bar dataKey="earnings" name="Beneficios" fill="#22c55e" />
+                            <Bar dataKey="fcf" name="Flujo de Caja Libre" fill="#f59e0b" />
+                          </BarChart>
+                        </ChartContainer>
+                      </ResponsiveContainer>
                     </div>
                   </CardContent>
                 </Card>
@@ -363,30 +383,35 @@ const StockValuationResults: React.FC<StockValuationResultsProps> = ({ data }) =
                     <CardDescription>Descomposición del crecimiento</CardDescription>
                   </CardHeader>
                   <CardContent className="pt-0">
-                    <div className="h-80">
-                      <ChartContainer config={{}}>
-                        <PieChart>
-                          <Pie
-                            data={growthRates.drivers.map((driver: any, index: number) => ({
-                              name: driver.name,
-                              value: driver.contribution
-                            }))}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            outerRadius={80}
-                            fill="#8884d8"
-                            dataKey="value"
-                            nameKey="name"
-                            label={({ name, percent }: { name: string, percent: number }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                          >
-                            {growthRates.drivers.map((entry: any, index: number) => (
-                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <ChartTooltip formatter={(value: any) => `${(value * 100).toFixed(2)}%`} />
-                        </PieChart>
-                      </ChartContainer>
+                    <div className="h-96">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <ChartContainer config={{}}>
+                          <PieChart margin={{ top: 5, right: 30, left: 20, bottom: 20 }}>
+                            <Pie
+                              data={growthRates.drivers.map((driver: any, index: number) => ({
+                                name: driver.name,
+                                value: driver.contribution
+                              }))}
+                              cx="50%"
+                              cy="50%"
+                              labelLine={false}
+                              outerRadius={80}
+                              fill="#8884d8"
+                              dataKey="value"
+                              nameKey="name"
+                              label={({ name, percent }: { name: string, percent: number }) => 
+                                `${name}: ${(percent * 100).toFixed(0)}%`
+                              }
+                            >
+                              {growthRates.drivers.map((entry: any, index: number) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Legend wrapperStyle={{ paddingTop: 20 }} />
+                            <ChartTooltip formatter={(value: any) => `${(value * 100).toFixed(2)}%`} />
+                          </PieChart>
+                        </ChartContainer>
+                      </ResponsiveContainer>
                     </div>
                   </CardContent>
                 </Card>
