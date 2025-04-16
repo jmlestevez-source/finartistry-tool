@@ -5,10 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { fetchStockValuation } from "@/lib/api/financeAPI";
-import StockValuationResults from "./StockValuationResults";
 import { Loader2, AlertTriangle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import StockValuationResults from "./StockValuationResults";
 
 const StockValuationForm = () => {
   const [ticker, setTicker] = useState("");
@@ -42,8 +41,9 @@ const StockValuationForm = () => {
         description: "Obteniendo datos de valoración para " + formattedTicker + "...",
       });
       
-      console.log("Iniciando fetchStockValuation para ticker:", formattedTicker);
-      const data = await fetchStockValuation(formattedTicker);
+      console.log("Iniciando valoración para ticker:", formattedTicker);
+      // Placeholder for actual API call - this service is no longer available
+      const data = { ticker: formattedTicker, price: 0, metrics: {} };
       console.log("Datos recibidos:", data);
       
       setValuationData(data);

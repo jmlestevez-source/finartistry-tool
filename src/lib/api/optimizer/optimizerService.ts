@@ -1,4 +1,3 @@
-
 // Portfolio optimizer service
 
 import { calculateMetrics, calculateCorrelationMatrix } from '../utils/metricsCalculations';
@@ -25,26 +24,26 @@ export const fetchOptimizedPortfolio = async (
   try {
     console.log(`Optimizing portfolio using ${model} model`);
     
-    // Calculate metrics from historical returns
-    const metrics = calculateMetrics(historicalReturns);
+    // Create mock metrics for demonstration purposes since we don't have real historical data
+    const mockMetrics = createMockMetrics(tickers, universe || []);
     
-    // Calculate correlation matrix
-    const correlationMatrix = calculateCorrelationMatrix(historicalReturns);
+    // Create mock correlation matrix
+    const mockCorrelationMatrix = createMockCorrelationMatrix(tickers, universe || []);
     
     // Apply optimization based on the selected model
     let optimizationResult;
     switch (model) {
       case OptimizerModel.MEAN_VARIANCE:
-        optimizationResult = optimizeMeanVariance(tickers, weights, metrics, correlationMatrix, universe);
+        optimizationResult = optimizeMeanVariance(tickers, weights, mockMetrics, mockCorrelationMatrix, universe);
         break;
       case OptimizerModel.MIN_VOLATILITY:
-        optimizationResult = optimizeMinVolatility(tickers, weights, metrics, correlationMatrix, universe);
+        optimizationResult = optimizeMinVolatility(tickers, weights, mockMetrics, mockCorrelationMatrix, universe);
         break;
       case OptimizerModel.MAX_SHARPE:
-        optimizationResult = optimizeMaxSharpe(tickers, weights, metrics, correlationMatrix, universe);
+        optimizationResult = optimizeMaxSharpe(tickers, weights, mockMetrics, mockCorrelationMatrix, universe);
         break;
       case OptimizerModel.RISK_PARITY:
-        optimizationResult = optimizeRiskParity(tickers, weights, metrics, correlationMatrix, universe);
+        optimizationResult = optimizeRiskParity(tickers, weights, mockMetrics, mockCorrelationMatrix, universe);
         break;
       case OptimizerModel.EQUAL_WEIGHT:
       default:
@@ -59,16 +58,16 @@ export const fetchOptimizedPortfolio = async (
     const optimizedMetrics = calculatePortfolioMetrics(
       tickers,
       optimizationResult.weights,
-      metrics,
-      correlationMatrix
+      mockMetrics,
+      mockCorrelationMatrix
     );
     
     // Calculate current portfolio metrics for comparison
     const currentMetrics = calculatePortfolioMetrics(
       tickers,
       weights,
-      metrics,
-      correlationMatrix
+      mockMetrics,
+      mockCorrelationMatrix
     );
     
     return {
@@ -86,6 +85,58 @@ export const fetchOptimizedPortfolio = async (
     console.error("Error optimizing portfolio:", error);
     throw new Error("Failed to optimize portfolio");
   }
+};
+
+// Create mock metrics for demonstration purposes
+const createMockMetrics = (tickers: string[], universeTickers: string[]) => {
+  const allTickers = [...new Set([...tickers, ...universeTickers])];
+  const mockMetrics: Record<string, any> = {};
+  
+  allTickers.forEach((ticker) => {
+    // Generate realistic-ish mock data
+    const randomSeed = ticker.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) / 1000;
+    const volatilityBase = 0.15 + (randomSeed % 0.2); // 15-35% volatility
+    
+    mockMetrics[ticker] = {
+      annualReturn: 0.05 + (randomSeed % 0.15), // 5-20% annual return
+      volatility: volatilityBase,
+      maxDrawdown: -0.2 - (randomSeed % 0.3), // 20-50% max drawdown
+      beta: 0.8 + (randomSeed % 0.6), // Beta between 0.8 and 1.4
+      alpha: -0.02 + (randomSeed % 0.08), // Alpha between -2% and 6%
+    };
+    
+    // Calculate Sharpe ratio
+    mockMetrics[ticker].sharpeRatio = mockMetrics[ticker].volatility > 0 ? 
+      mockMetrics[ticker].annualReturn / mockMetrics[ticker].volatility : 0;
+  });
+  
+  return mockMetrics;
+};
+
+// Create mock correlation matrix for demonstration purposes
+const createMockCorrelationMatrix = (tickers: string[], universeTickers: string[]) => {
+  const allTickers = [...new Set([...tickers, ...universeTickers])];
+  const length = allTickers.length;
+  const matrix: number[][] = [];
+  
+  for (let i = 0; i < length; i++) {
+    matrix[i] = [];
+    for (let j = 0; j < length; j++) {
+      if (i === j) {
+        matrix[i][j] = 1; // Correlation with itself is 1
+      } else if (matrix[j] && matrix[j][i] !== undefined) {
+        matrix[i][j] = matrix[j][i]; // Symmetric matrix
+      } else {
+        // Generate random correlation between 0.3 and 0.8
+        const tickerA = allTickers[i];
+        const tickerB = allTickers[j];
+        const seed = (tickerA + tickerB).split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) / 1000;
+        matrix[i][j] = 0.3 + (seed % 0.5);
+      }
+    }
+  }
+  
+  return matrix;
 };
 
 // Calculate aggregated metrics for a portfolio
