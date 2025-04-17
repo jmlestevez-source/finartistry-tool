@@ -2,7 +2,7 @@
 // Portfolio analysis service
 
 import { FINANCIAL_MODELING_PREP_API_KEY } from '../constants';
-import { fetchFinancialData } from '../utils/apiUtils';
+import { fetchFinancialData, fetchStockRecommendations } from '../utils/apiUtils';
 import { 
   calculateStartDate, 
   getTodayDate, 
@@ -20,7 +20,7 @@ import {
 } from '../utils/metricsCalculations';
 
 // Datos de prueba para cuando la API no responde
-const generateMockPortfolioData = (tickers, weights, benchmark, period) => {
+const generateMockPortfolioData = (tickers: string[], weights: number[], benchmark: string, period: string) => {
   console.log("Generando datos de prueba para la cartera");
   
   // Crear datos de rendimiento histórico simulados
@@ -28,7 +28,7 @@ const generateMockPortfolioData = (tickers, weights, benchmark, period) => {
   const startDate = new Date();
   startDate.setFullYear(today.getFullYear() - parseInt(period));
   
-  const days = Math.floor((today - startDate) / (24 * 60 * 60 * 1000));
+  const days = Math.floor((today.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000));
   const performanceChart = [];
   
   // Generar datos diarios con un patrón aleatorio pero realista
@@ -37,8 +37,8 @@ const generateMockPortfolioData = (tickers, weights, benchmark, period) => {
     date.setDate(startDate.getDate() + i);
     
     // Valores simulados con cierta aleatoriedad pero con tendencia alcista
-    const portfolioValue = 1 + (Math.random() * 0.5 + 0.25) * (i / days);
-    const benchmarkValue = 1 + (Math.random() * 0.4 + 0.15) * (i / days);
+    const portfolioValue = 1 + (Math.random() * 0.5 + 0.25) * (i / Math.max(days, 1));
+    const benchmarkValue = 1 + (Math.random() * 0.4 + 0.15) * (i / Math.max(days, 1));
     
     performanceChart.push({
       date: date.toISOString().split('T')[0],
@@ -48,7 +48,7 @@ const generateMockPortfolioData = (tickers, weights, benchmark, period) => {
   }
   
   // Crear matriz de correlación simulada
-  const correlationMatrix = [];
+  const correlationMatrix: number[][] = [];
   for (let i = 0; i < tickers.length; i++) {
     correlationMatrix.push([]);
     for (let j = 0; j < tickers.length; j++) {
@@ -73,7 +73,7 @@ const generateMockPortfolioData = (tickers, weights, benchmark, period) => {
   };
   
   // Generar métricas para cada ticker
-  const stockMetrics = {};
+  const stockMetrics: Record<string, any> = {};
   tickers.forEach(ticker => {
     stockMetrics[ticker] = {
       annualReturn: 0.08 + Math.random() * 0.15,
@@ -133,13 +133,32 @@ export const fetchPortfolioData = async (
         )
       );
       
-      const historicalDataResponses = await Promise.all(historicalDataPromises);
+      let historicalDataResponses;
+      try {
+        historicalDataResponses = await Promise.all(historicalDataPromises);
+      } catch (error) {
+        console.error("Error obteniendo datos históricos, intentando modo de recuperación:", error);
+        // Si hay error en la obtención de datos, intentar obtenerlos uno por uno
+        historicalDataResponses = await Promise.all(allTickers.map(async ticker => {
+          try {
+            return await fetchFinancialData(
+              `https://financialmodelingprep.com/api/v3/historical-price-full/${ticker}`,
+              { apikey: FINANCIAL_MODELING_PREP_API_KEY, from: calculateStartDate(period), to: getTodayDate() }
+            );
+          } catch (tickerError) {
+            console.warn(`No se pudieron obtener datos para ${ticker}:`, tickerError);
+            return null;
+          }
+        }));
+      }
       
       // Procesar y combinar datos históricos
       let combinedData: any = {};
       const tickersWithData: string[] = [];
       
       historicalDataResponses.forEach((response, index) => {
+        if (!response) return; // Saltear respuestas nulas
+        
         const ticker = allTickers[index];
         if (response && response.historical && response.historical.length > 0) {
           const transformedData = transformFMPHistoricalData(response.historical, ticker);
@@ -160,9 +179,9 @@ export const fetchPortfolioData = async (
       const sortedHistoricalData = Object.values(combinedData)
         .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
       
-      if (sortedHistoricalData.length === 0) {
-        console.warn("No historical data available for the specified period, using mock data");
-        throw new Error("No hay datos históricos disponibles para el período especificado");
+      if (sortedHistoricalData.length === 0 || tickersWithData.length < allTickers.length * 0.75) {
+        console.warn("No hay suficientes datos históricos disponibles, usando datos simulados");
+        throw new Error("Datos históricos insuficientes para un análisis preciso");
       }
       
       // Calcular retornos diarios
@@ -262,7 +281,7 @@ export const fetchPortfolioData = async (
               : 0;
             
             return innerAcc + weight * innerWeight * correlation * 
-              metrics[allTickers[i]].volatility * metrics[allTickers[j]].volatility;
+              (metrics[allTickers[i]].volatility || 0) * (metrics[allTickers[j]].volatility || 0);
           }, 0);
         }, 0)
       );
@@ -270,7 +289,7 @@ export const fetchPortfolioData = async (
       portfolioMetrics.maxDrawdown = Math.min(...portfolioPerformance.map((day: any, idx: number, arr: any[]) => {
         if (idx === 0) return 0;
         const maxPrevValue = Math.max(...arr.slice(0, idx).map((d: any) => d.portfolio));
-        return day.portfolio / maxPrevValue - 1;
+        return (day.portfolio / maxPrevValue) - 1;
       }));
       
       portfolioMetrics.alpha = metrics[benchmark] ? 

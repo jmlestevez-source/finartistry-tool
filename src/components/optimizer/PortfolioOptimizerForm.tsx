@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -9,9 +9,9 @@ import {
   CardContent
 } from "@/components/ui/card";
 import { OptimizerModel, fetchOptimizedPortfolio } from "@/lib/api/optimizer/optimizerService";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Info } from "lucide-react";
 import { PortfolioOptimizerResults } from "./PortfolioOptimizerResults";
 import {
   Select,
@@ -20,6 +20,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { fetchStockRecommendations } from "@/lib/api/utils/apiUtils";
+import { Badge } from "@/components/ui/badge";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const PortfolioOptimizerForm = () => {
   const [tickers, setTickers] = useState("");
@@ -30,8 +34,72 @@ const PortfolioOptimizerForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [optimizerData, setOptimizerData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [recommendations, setRecommendations] = useState<any[]>([]);
+  const [recommendationMetric, setRecommendationMetric] = useState<'sharpe' | 'volatility' | 'correlation'>('sharpe');
+  const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
+  const [showRecommendations, setShowRecommendations] = useState(false);
+  const [selectedRecommendations, setSelectedRecommendations] = useState<string[]>([]);
   
   const { toast } = useToast();
+
+  const fetchRecommendations = async () => {
+    if (!tickers) {
+      toast({
+        title: "No hay tickers",
+        description: "Por favor, ingrese al menos un ticker para obtener recomendaciones.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setIsLoadingRecommendations(true);
+    
+    try {
+      const tickersList = tickers.split(",").map(t => t.trim().toUpperCase());
+      const data = await fetchStockRecommendations(tickersList, recommendationMetric, 5);
+      setRecommendations(data);
+      setShowRecommendations(true);
+    } catch (error) {
+      toast({
+        title: "Error en las recomendaciones",
+        description: "No se pudieron obtener recomendaciones.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingRecommendations(false);
+    }
+  };
+
+  const handleAddRecommendation = (ticker: string) => {
+    if (selectedRecommendations.includes(ticker)) {
+      setSelectedRecommendations(selectedRecommendations.filter(t => t !== ticker));
+    } else {
+      setSelectedRecommendations([...selectedRecommendations, ticker]);
+    }
+  };
+
+  const handleApplyRecommendations = () => {
+    if (selectedRecommendations.length === 0) return;
+    
+    // Añadir las recomendaciones seleccionadas al universo
+    const currentUniverse = universe ? universe.split(",").map(t => t.trim()) : [];
+    const newUniverseItems = selectedRecommendations.filter(
+      ticker => !currentUniverse.includes(ticker)
+    );
+    
+    if (newUniverseItems.length > 0) {
+      const newUniverse = [...currentUniverse, ...newUniverseItems];
+      setUniverse(newUniverse.join(", "));
+      
+      toast({
+        title: "Recomendaciones añadidas",
+        description: `Se añadieron ${newUniverseItems.length} tickers al universo de inversión.`,
+      });
+    }
+    
+    setShowRecommendations(false);
+    setSelectedRecommendations([]);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -150,9 +218,30 @@ const PortfolioOptimizerForm = () => {
         </div>
         
         <div className="space-y-2">
-          <Label htmlFor="universe">
-            Universo adicional de tickers a considerar (opcional)
-          </Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="universe">
+              Universo adicional de tickers a considerar
+            </Label>
+            <Button 
+              type="button" 
+              variant="outline" 
+              size="sm"
+              onClick={fetchRecommendations}
+              disabled={isLoadingRecommendations || !tickers}
+            >
+              {isLoadingRecommendations ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Buscando
+                </>
+              ) : (
+                <>
+                  <Info className="mr-2 h-4 w-4" />
+                  Obtener recomendaciones
+                </>
+              )}
+            </Button>
+          </div>
           <Input
             id="universe"
             placeholder="NVDA, AMZN, TSLA"
@@ -163,6 +252,70 @@ const PortfolioOptimizerForm = () => {
             Tickers adicionales que podrían ser recomendados para su cartera.
           </p>
         </div>
+        
+        {showRecommendations && recommendations.length > 0 && (
+          <Card className="mt-2">
+            <CardContent className="pt-4">
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-sm font-medium mb-2">Recomendaciones según</h4>
+                  <RadioGroup 
+                    value={recommendationMetric} 
+                    onValueChange={(value) => setRecommendationMetric(value as 'sharpe' | 'volatility' | 'correlation')}
+                    className="flex space-x-4"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="sharpe" id="r1" />
+                      <Label htmlFor="r1">Ratio Sharpe</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="volatility" id="r2" />
+                      <Label htmlFor="r2">Volatilidad</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="correlation" id="r3" />
+                      <Label htmlFor="r3">Correlación</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+                
+                <div>
+                  <h4 className="text-sm font-medium mb-2">Tickers recomendados</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {recommendations.map((rec) => (
+                      <div key={rec.ticker} className="flex items-center">
+                        <Checkbox
+                          id={`rec-${rec.ticker}`}
+                          checked={selectedRecommendations.includes(rec.ticker)}
+                          onCheckedChange={() => handleAddRecommendation(rec.ticker)}
+                          className="mr-2"
+                        />
+                        <Label htmlFor={`rec-${rec.ticker}`}>
+                          <Badge className="cursor-pointer">
+                            {rec.ticker}
+                          </Badge>
+                        </Label>
+                        <span className="text-xs text-muted-foreground ml-2">{rec.reason}</span>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="mt-2"
+                    onClick={handleApplyRecommendations}
+                    disabled={selectedRecommendations.length === 0}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Añadir a universo
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">

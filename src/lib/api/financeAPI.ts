@@ -13,6 +13,14 @@ export {
   OptimizerModel 
 } from './optimizer/optimizerService';
 
+// Export API utilities
+export { 
+  fetchFinancialData, 
+  fetchAlphaVantageData, 
+  fetchYahooFinanceData,
+  fetchStockRecommendations
+} from './utils/apiUtils';
+
 // Also re-export utility functions that might be useful elsewhere
 export { 
   calculateStartDate, 
