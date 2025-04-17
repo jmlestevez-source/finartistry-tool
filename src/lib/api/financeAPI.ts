@@ -13,7 +13,7 @@ export {
   OptimizerModel 
 } from './optimizer/optimizerService';
 
-// Export API utilities
+// Export API utilities and ticker lists
 export { 
   fetchFinancialData, 
   fetchAlphaVantageData, 

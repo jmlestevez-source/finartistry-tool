@@ -24,15 +24,31 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+// Define una interfaz para los datos del portfolio que incluye dataSource
+interface PortfolioData {
+  performanceChart: any[];
+  correlationMatrix: number[][];
+  metrics: {
+    annualReturn: number;
+    volatility: number;
+    sharpeRatio: number;
+    maxDrawdown: number;
+    alpha: number;
+    beta: number;
+  };
+  stockMetrics: Record<string, any>;
+  dataSource?: string;
+}
+
 const PortfolioAnalysisForm = () => {
   const [tickers, setTickers] = useState("");
   const [weights, setWeights] = useState("");
   const [benchmark, setBenchmark] = useState("SPY");
   const [period, setPeriod] = useState("5y");
   const [isLoading, setIsLoading] = useState(false);
-  const [portfolioData, setPortfolioData] = useState<any>(null);
+  const [portfolioData, setPortfolioData] = useState<PortfolioData | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [dataSource, setDataSource] = useState<string>(""); // Nueva variable para la fuente de datos
+  const [dataSource, setDataSource] = useState<string>("");
   
   const { toast } = useToast();
 

@@ -165,8 +165,8 @@ export const fetchAlphaVantageData = async (function_name: string, params: Recor
   }
 };
 
-// Índices principales para recomendaciones
-const STOXX50_TICKERS = [
+// Índices principales para recomendaciones - Ahora exportados correctamente
+export const STOXX50_TICKERS = [
   'ADS.DE', 'ADYEN.AS', 'AI.PA', 'AIR.PA', 'ALV.DE', 'ASML.AS', 'BAS.DE', 'BAYN.DE',
   'BMW.DE', 'BNP.PA', 'CRH.AS', 'CS.PA', 'DHER.DE', 'DPW.DE', 'DTE.DE', 'ENEL.MI',
   'ENGI.PA', 'ENI.MI', 'EL.PA', 'IBE.MC', 'IFX.DE', 'INGA.AS', 'ISP.MI', 'KER.PA',
@@ -175,13 +175,13 @@ const STOXX50_TICKERS = [
 ];
 
 // Lista parcial de SP500 - seleccionando algunos de los más representativos
-const SP500_TICKERS = [
+export const SP500_TICKERS = [
   'AAPL', 'MSFT', 'AMZN', 'NVDA', 'GOOGL', 'GOOG', 'META', 'TSLA', 'BRK-B', 'UNH',
   'JPM', 'V', 'JNJ', 'PG', 'XOM', 'MA', 'HD', 'CVX', 'MRK', 'LLY'
 ];
 
 // Lista parcial de NASDAQ 100 - seleccionando algunos de los más representativos
-const NASDAQ100_TICKERS = [
+export const NASDAQ100_TICKERS = [
   'AAPL', 'MSFT', 'AMZN', 'NVDA', 'GOOGL', 'GOOG', 'META', 'TSLA', 'AVGO', 'COST',
   'PEP', 'CSCO', 'ADBE', 'NFLX', 'CMCSA', 'QCOM', 'INTC', 'AMD', 'TXN', 'PYPL'
 ];
