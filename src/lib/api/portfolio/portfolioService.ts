@@ -101,7 +101,8 @@ const generateMockPortfolioData = (tickers: string[], weights: number[], benchma
     performanceChart,
     correlationMatrix,
     metrics: portfolioMetrics,
-    stockMetrics
+    stockMetrics,
+    dataSource: 'Simulated Data'
   };
 };
 
@@ -124,6 +125,8 @@ export const fetchPortfolioData = async (
       portfolioWeights = [...weights, 0];
     }
     
+    let dataSource = '';
+    
     try {
       // Obtener datos históricos para cada ticker
       const historicalDataPromises = allTickers.map(ticker => 
@@ -136,15 +139,40 @@ export const fetchPortfolioData = async (
       let historicalDataResponses;
       try {
         historicalDataResponses = await Promise.all(historicalDataPromises);
+        
+        // Verificar si alguna respuesta proviene de Yahoo Finance o datos simulados
+        for (const response of historicalDataResponses) {
+          if (response && response.dataSource) {
+            // Yahoo Finance tiene prioridad sobre datos simulados
+            if (response.dataSource === 'Yahoo Finance') {
+              dataSource = 'Yahoo Finance';
+              break;
+            } else if (response.dataSource === 'Simulated Data') {
+              dataSource = 'Simulated Data';
+              // No salimos del bucle aquí porque podría haber respuestas de Yahoo Finance
+            }
+          }
+        }
       } catch (error) {
         console.error("Error obteniendo datos históricos, intentando modo de recuperación:", error);
         // Si hay error en la obtención de datos, intentar obtenerlos uno por uno
         historicalDataResponses = await Promise.all(allTickers.map(async ticker => {
           try {
-            return await fetchFinancialData(
+            const response = await fetchFinancialData(
               `https://financialmodelingprep.com/api/v3/historical-price-full/${ticker}`,
               { apikey: FINANCIAL_MODELING_PREP_API_KEY, from: calculateStartDate(period), to: getTodayDate() }
             );
+            
+            // Verificar fuente de datos
+            if (response && response.dataSource) {
+              if (response.dataSource === 'Yahoo Finance') {
+                dataSource = 'Yahoo Finance';
+              } else if (response.dataSource === 'Simulated Data' && dataSource !== 'Yahoo Finance') {
+                dataSource = 'Simulated Data';
+              }
+            }
+            
+            return response;
           } catch (tickerError) {
             console.warn(`No se pudieron obtener datos para ${ticker}:`, tickerError);
             return null;
@@ -312,7 +340,8 @@ export const fetchPortfolioData = async (
             beta: ticker === benchmark ? 1 : 0,
             alpha: 0
           }])
-        )
+        ),
+        dataSource: dataSource || 'Financial Modeling Prep'
       };
       
     } catch (apiError) {
@@ -323,6 +352,6 @@ export const fetchPortfolioData = async (
     
   } catch (error) {
     console.error("Error fetching portfolio data:", error);
-    throw new Error("Failed to fetch portfolio data");
+    throw new Error(`Failed to fetch portfolio data: ${error instanceof Error ? error.message : String(error)}`);
   }
 };

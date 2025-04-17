@@ -17,8 +17,8 @@ import {
   STOXX50_TICKERS, 
   SP500_TICKERS, 
   NASDAQ100_TICKERS 
-} from "@/lib/api/utils/apiUtils";
-import { Loader2, Plus, Info } from "lucide-react";
+} from "@/lib/api/financeAPI";
+import { Loader2, Plus, Info, Search, X } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
 import { PortfolioOptimizerResults } from "./PortfolioOptimizerResults";
@@ -33,6 +33,24 @@ import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
+interface OptimizerData {
+  currentWeights: number[];
+  optimizedWeights: number[];
+  rationale: string;
+  tickers: string[];
+  metrics: {
+    current: any;
+    optimized: any;
+  };
+  newSuggestions: Array<{
+    ticker: string;
+    weight: number;
+    reason: string;
+  }>;
+  dataSource?: string;
+}
 
 const PortfolioOptimizerForm = () => {
   const [tickers, setTickers] = useState("");
@@ -41,7 +59,7 @@ const PortfolioOptimizerForm = () => {
   const [period, setPeriod] = useState("5y");
   const [optimizerModel, setOptimizerModel] = useState<OptimizerModel>(OptimizerModel.MAX_SHARPE);
   const [isLoading, setIsLoading] = useState(false);
-  const [optimizerData, setOptimizerData] = useState<any>(null);
+  const [optimizerData, setOptimizerData] = useState<OptimizerData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [recommendationMetric, setRecommendationMetric] = useState<'sharpe' | 'volatility' | 'correlation'>('sharpe');
@@ -50,8 +68,34 @@ const PortfolioOptimizerForm = () => {
   const [selectedRecommendations, setSelectedRecommendations] = useState<string[]>([]);
   const [selectedIndex, setSelectedIndex] = useState<string>("custom");
   const [dataSource, setDataSource] = useState<string>("");
+  const [indexTickerFilter, setIndexTickerFilter] = useState<string>("");
+  const [selectedIndexTickers, setSelectedIndexTickers] = useState<string[]>([]);
+  const [availableIndexTickers, setAvailableIndexTickers] = useState<string[]>([]);
   
   const { toast } = useToast();
+
+  // Cuando cambia el índice seleccionado, actualizar los tickers disponibles
+  useEffect(() => {
+    let tickersToShow: string[] = [];
+    
+    switch (selectedIndex) {
+      case "stoxx50":
+        tickersToShow = STOXX50_TICKERS;
+        break;
+      case "sp500":
+        tickersToShow = SP500_TICKERS;
+        break;
+      case "nasdaq100":
+        tickersToShow = NASDAQ100_TICKERS;
+        break;
+      default:
+        tickersToShow = [];
+    }
+    
+    setAvailableIndexTickers(tickersToShow);
+    setSelectedIndexTickers([]);
+    setIndexTickerFilter("");
+  }, [selectedIndex]);
 
   const fetchRecommendations = async () => {
     if (!tickers) {
@@ -89,6 +133,14 @@ const PortfolioOptimizerForm = () => {
     }
   };
 
+  const handleAddIndexTicker = (ticker: string) => {
+    if (selectedIndexTickers.includes(ticker)) {
+      setSelectedIndexTickers(selectedIndexTickers.filter(t => t !== ticker));
+    } else {
+      setSelectedIndexTickers([...selectedIndexTickers, ticker]);
+    }
+  };
+
   const handleApplyRecommendations = () => {
     if (selectedRecommendations.length === 0) return;
     
@@ -114,31 +166,46 @@ const PortfolioOptimizerForm = () => {
 
   const handleIndexSelection = (index: string) => {
     setSelectedIndex(index);
-    let tickersToAdd: string[] = [];
+  };
+
+  const handleApplyIndexTickers = () => {
+    if (selectedIndexTickers.length === 0) return;
     
-    switch (index) {
-      case "stoxx50":
-        tickersToAdd = STOXX50_TICKERS.slice(0, 5);
-        break;
-      case "sp500":
-        tickersToAdd = SP500_TICKERS.slice(0, 5);
-        break;
-      case "nasdaq100":
-        tickersToAdd = NASDAQ100_TICKERS.slice(0, 5);
-        break;
-      default:
-        return;
-    }
-    
-    // Añadir estos tickers al universo de inversión
+    // Añadir los tickers seleccionados del índice al universo
     const currentUniverse = universe ? universe.split(",").map(t => t.trim()) : [];
-    const combinedUniverse = [...new Set([...currentUniverse, ...tickersToAdd])];
-    setUniverse(combinedUniverse.join(", "));
+    const newUniverseItems = selectedIndexTickers.filter(
+      ticker => !currentUniverse.includes(ticker)
+    );
     
-    toast({
-      title: "Índice seleccionado",
-      description: `Se añadieron tickers del índice seleccionado al universo de inversión.`,
-    });
+    if (newUniverseItems.length > 0) {
+      const newUniverse = [...currentUniverse, ...newUniverseItems];
+      setUniverse(newUniverse.join(", "));
+      
+      toast({
+        title: "Tickers añadidos",
+        description: `Se añadieron ${newUniverseItems.length} tickers del índice al universo de inversión.`,
+      });
+    }
+  };
+
+  const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setIndexTickerFilter(e.target.value);
+  };
+
+  const handleSelectAllFilteredTickers = () => {
+    const filteredTickers = availableIndexTickers.filter(ticker =>
+      indexTickerFilter ? ticker.includes(indexTickerFilter.toUpperCase()) : true
+    );
+    
+    setSelectedIndexTickers([...new Set([...selectedIndexTickers, ...filteredTickers])]);
+  };
+
+  const handleClearSelectedTickers = () => {
+    setSelectedIndexTickers([]);
+  };
+
+  const clearFilter = () => {
+    setIndexTickerFilter("");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -208,9 +275,15 @@ const PortfolioOptimizerForm = () => {
       
       setOptimizerData(data);
       
-      // Verificar si los datos vienen de Yahoo Finance
-      if (data.dataSource === "Yahoo Finance") {
-        setDataSource("Yahoo Finance");
+      // Verificar si los datos vienen de Yahoo Finance o son simulados
+      if (data.dataSource) {
+        setDataSource(data.dataSource);
+        
+        toast({
+          title: "Fuente de datos",
+          description: `Datos obtenidos desde: ${data.dataSource}`,
+          variant: "default"
+        });
       }
       
       toast({
@@ -233,6 +306,11 @@ const PortfolioOptimizerForm = () => {
       setIsLoading(false);
     }
   };
+
+  // Filtrar los tickers del índice según el filtro
+  const filteredIndexTickers = availableIndexTickers.filter(ticker =>
+    indexTickerFilter ? ticker.includes(indexTickerFilter.toUpperCase()) : true
+  );
 
   return (
     <div className="space-y-6">
@@ -297,17 +375,112 @@ const PortfolioOptimizerForm = () => {
               <TabsTrigger value="nasdaq100">NASDAQ 100</TabsTrigger>
             </TabsList>
             
-            <Input
-              id="universe"
-              placeholder="NVDA, AMZN, TSLA"
-              value={universe}
-              onChange={(e) => setUniverse(e.target.value)}
-            />
+            <TabsContent value="custom">
+              <Input
+                id="universe"
+                placeholder="NVDA, AMZN, TSLA"
+                value={universe}
+                onChange={(e) => setUniverse(e.target.value)}
+              />
+              <p className="text-sm text-muted-foreground mt-2">
+                Tickers adicionales que podrían ser recomendados para su cartera.
+              </p>
+            </TabsContent>
+            
+            {(selectedIndex === "stoxx50" || selectedIndex === "sp500" || selectedIndex === "nasdaq100") && (
+              <TabsContent value={selectedIndex} className="space-y-3">
+                <div className="flex gap-2">
+                  <div className="relative flex-grow">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder={`Buscar en ${selectedIndex.toUpperCase()}...`}
+                      value={indexTickerFilter}
+                      onChange={handleFilterChange}
+                      className="pl-8 pr-8"
+                    />
+                    {indexTickerFilter && (
+                      <button
+                        type="button"
+                        onClick={clearFilter}
+                        className="absolute right-2 top-2.5 text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                  <Button 
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSelectAllFilteredTickers}
+                    className="whitespace-nowrap"
+                  >
+                    Seleccionar todos
+                  </Button>
+                  <Button 
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleClearSelectedTickers}
+                    className="whitespace-nowrap"
+                  >
+                    Limpiar
+                  </Button>
+                </div>
+                
+                <ScrollArea className="h-48 border rounded-md p-2">
+                  <div className="flex flex-wrap gap-2">
+                    {filteredIndexTickers.map((ticker) => (
+                      <div key={ticker} className="flex items-center">
+                        <Checkbox
+                          id={`ticker-${ticker}`}
+                          checked={selectedIndexTickers.includes(ticker)}
+                          onCheckedChange={() => handleAddIndexTicker(ticker)}
+                          className="mr-2"
+                        />
+                        <Label htmlFor={`ticker-${ticker}`}>
+                          <Badge 
+                            variant={selectedIndexTickers.includes(ticker) ? "default" : "outline"}
+                            className="cursor-pointer"
+                          >
+                            {ticker}
+                          </Badge>
+                        </Label>
+                      </div>
+                    ))}
+                    {filteredIndexTickers.length === 0 && (
+                      <p className="text-sm text-muted-foreground p-2">No se encontraron tickers con ese filtro.</p>
+                    )}
+                  </div>
+                </ScrollArea>
+                
+                <div className="flex justify-between items-center">
+                  <p className="text-sm text-muted-foreground">
+                    {selectedIndexTickers.length} tickers seleccionados
+                  </p>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleApplyIndexTickers}
+                    disabled={selectedIndexTickers.length === 0}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Añadir a universo
+                  </Button>
+                </div>
+                
+                {/* Mostrar el campo de universe que seguirá disponible para edición manual */}
+                <Input
+                  id="universe"
+                  placeholder="Universo de tickers adicionales"
+                  value={universe}
+                  onChange={(e) => setUniverse(e.target.value)}
+                  className="mt-2"
+                />
+              </TabsContent>
+            )}
           </Tabs>
-          
-          <p className="text-sm text-muted-foreground">
-            Tickers adicionales que podrían ser recomendados para su cartera.
-          </p>
         </div>
         
         {showRecommendations && recommendations.length > 0 && (
@@ -420,12 +593,17 @@ const PortfolioOptimizerForm = () => {
         </Button>
       </form>
       
-      {dataSource === "Yahoo Finance" && (
+      {dataSource && (
         <Alert variant="default" className="bg-yellow-50 dark:bg-yellow-950 border-yellow-200">
           <Info className="h-4 w-4" />
           <AlertTitle>Fuente de datos</AlertTitle>
           <AlertDescription>
-            Datos descargados desde Yahoo Finance debido a limitaciones de la API principal.
+            {dataSource === "Yahoo Finance" ? 
+              "Datos descargados desde Yahoo Finance debido a limitaciones de la API principal." : 
+              dataSource === "Simulated Data" ?
+              "Usando datos simulados debido a limitaciones en el acceso a APIs financieras." :
+              `Fuente de datos: ${dataSource}`
+            }
           </AlertDescription>
         </Alert>
       )}

@@ -117,9 +117,14 @@ const PortfolioAnalysisForm = () => {
       
       setPortfolioData(data);
       
-      // Comprobar si los datos vienen de Yahoo Finance
-      if (data.dataSource === "Yahoo Finance") {
-        setDataSource("Yahoo Finance");
+      // Comprobar si los datos vienen de Yahoo Finance o son simulados
+      if (data.dataSource) {
+        setDataSource(data.dataSource);
+        toast({
+          title: "Fuente de datos",
+          description: `Datos obtenidos desde: ${data.dataSource}`,
+          variant: "default"
+        });
       }
       
       toast({
@@ -212,12 +217,17 @@ const PortfolioAnalysisForm = () => {
         </Button>
       </form>
       
-      {dataSource === "Yahoo Finance" && (
+      {dataSource && (
         <Alert variant="default" className="bg-yellow-50 dark:bg-yellow-950 border-yellow-200">
           <Info className="h-4 w-4" />
           <AlertTitle>Fuente de datos</AlertTitle>
           <AlertDescription>
-            Datos descargados desde Yahoo Finance debido a limitaciones de la API principal.
+            {dataSource === "Yahoo Finance" ? 
+              "Datos descargados desde Yahoo Finance debido a limitaciones de la API principal." : 
+              dataSource === "Simulated Data" ?
+              "Usando datos simulados debido a limitaciones en el acceso a APIs financieras." :
+              `Fuente de datos: ${dataSource}`
+            }
           </AlertDescription>
         </Alert>
       )}
