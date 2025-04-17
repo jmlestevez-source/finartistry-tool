@@ -3,8 +3,13 @@
 import { toast } from "@/hooks/use-toast";
 import { ALPHA_VANTAGE_API_KEY } from "../constants";
 
+// Helper function to remove duplicate tickers
+const removeDuplicates = (tickers: string[]): string[] => {
+  return [...new Set(tickers)];
+};
+
 // Exportar listas completas de tickers para índices principales
-export const STOXX50_TICKERS: string[] = [
+export const STOXX50_TICKERS: string[] = removeDuplicates([
   'ABI.BR', 'AD.AS', 'ADY.PA', 'AI.PA', 'AIR.PA', 
   'ALV.DE', 'ASML.AS', 'BNP.PA', 'BAYN.DE', 'BBVA.MC',
   'BMW.DE', 'BN.PA', 'CRH.PA', 'CS.PA', 'DAI.DE',
@@ -14,35 +19,59 @@ export const STOXX50_TICKERS: string[] = [
   'MUV2.DE', 'NOKIA.HE', 'OR.PA', 'ORA.PA', 'PHIA.AS',
   'PRX.AS', 'RMS.PA', 'RWE.DE', 'SAN.MC', 'SAN.PA',
   'SAP.DE', 'SIE.DE', 'SU.PA', 'TEF.MC', 'UCG.MI',
-  'VOW3.DE', 'VIV.PA', 'VNA.DE', 'DG.PA', 'BAS.DE'
-];
+  'VOW3.DE', 'VIV.PA', 'VNA.DE', 'BAS.DE'
+]);
 
-export const SP500_TICKERS: string[] = [
-  'AAPL', 'MSFT', 'AMZN', 'GOOGL', 'GOOG', 'FB', 'TSLA', 'BRK-B', 
-  'JPM', 'JNJ', 'V', 'PG', 'UNH', 'HD', 'MA', 'BAC', 'DIS', 'PYPL', 
-  'CMCSA', 'ADBE', 'NFLX', 'XOM', 'VZ', 'INTC', 'T', 'CRM', 'CSCO', 
-  'PFE', 'ABT', 'NKE', 'KO', 'PEP', 'WMT', 'TMO', 'NVDA', 'MRK', 
-  'ABBV', 'LLY', 'CVX', 'AVGO', 'ACN', 'MCD', 'WFC', 'DHR', 'MDT',
-  'TXN', 'NEE', 'BMY', 'UNP', 'PM', 'ORCL', 'HON', 'QCOM', 'LIN',
-  'COST', 'AMGN', 'LOW', 'MS', 'UPS', 'IBM', 'RTX', 'AMT', 'GS',
-  'BLK', 'SBUX', 'GILD', 'AXP', 'C', 'MMM', 'SPGI', 'CAT', 'MDLZ',
-  'TGT', 'BA', 'CVS', 'NOW', 'INTU', 'DE', 'ZTS', 'FIS', 'BKNG',
-  'GE', 'SCHW', 'PLD', 'ANTM', 'LMT', 'TJX', 'CHTR', 'MO', 'SYK'
-];
+// S&P 500 tickers from Wikipedia
+export const SP500_TICKERS: string[] = removeDuplicates([
+  'MMM', 'AOS', 'ABT', 'ABBV', 'ACN', 'ADBE', 'ADM', 'ABNB', 'ADSK', 'ADP', 'AES', 'AFL', 'A', 'APD', 'AKAM', 
+  'ALB', 'ARE', 'ALGN', 'ALLE', 'LNT', 'ALL', 'GOOGL', 'GOOG', 'MO', 'AMZN', 'AMCR', 'AMD', 'AEE', 'AAL', 'AEP', 
+  'AXP', 'AIG', 'AMT', 'AWK', 'AMP', 'AME', 'AMGN', 'APH', 'ADI', 'ANSS', 'AON', 'APA', 'AAPL', 'AMAT', 'APTV', 
+  'ACGL', 'ANET', 'AJG', 'AIZ', 'T', 'ATO', 'ADSK', 'AZO', 'AVB', 'AVY', 'AXON', 'BKR', 'BALL', 'BAC', 'BBWI', 
+  'BAX', 'BDX', 'WRB', 'BRK-B', 'BBY', 'BIO', 'TECH', 'BIIB', 'BLK', 'BK', 'BA', 'BKNG', 'BWA', 'BXP', 'BSX', 
+  'BMY', 'AVGO', 'BR', 'BRO', 'BF-B', 'BG', 'BLDR', 'CDNS', 'CZR', 'CPT', 'CPB', 'COF', 'CAH', 'KMX', 'CCL', 
+  'CARR', 'CTLT', 'CAT', 'CBOE', 'CBRE', 'CDW', 'CE', 'COR', 'CNC', 'CNP', 'CDAY', 'CF', 'CRL', 'SCHW', 'CHTR', 
+  'CVX', 'CMG', 'CB', 'CHD', 'CI', 'CINF', 'CTAS', 'CSCO', 'C', 'CFG', 'CLX', 'CME', 'CMS', 'KO', 'CTSH', 'CL', 
+  'CMCSA', 'CMA', 'CAG', 'COP', 'ED', 'STZ', 'CEG', 'COO', 'CPRT', 'GLW', 'CTVA', 'CSGP', 'COST', 'CTRA', 'CCI', 
+  'CSX', 'CMI', 'CVS', 'DHI', 'DHR', 'DRI', 'DVA', 'DE', 'DAL', 'XRAY', 'DVN', 'DXCM', 'FANG', 'DLR', 'DFS', 'DIS', 
+  'DG', 'DLTR', 'D', 'DPZ', 'DOV', 'DOW', 'DTE', 'DUK', 'DD', 'EMN', 'ETN', 'EBAY', 'ECL', 'EIX', 'EW', 'EA', 'ELV', 
+  'LLY', 'EMR', 'ENPH', 'ETR', 'EOG', 'EPAM', 'EQT', 'EFX', 'EQIX', 'EQR', 'ESS', 'EL', 'ETSY', 'EG', 'EVRG', 'ES', 
+  'EXC', 'EXPE', 'EXPD', 'EXR', 'XOM', 'FFIV', 'FDS', 'FICO', 'FAST', 'FRT', 'FDX', 'FITB', 'FSLR', 'FE', 'FIS', 
+  'FI', 'FLT', 'FMC', 'F', 'FTNT', 'FTV', 'FOXA', 'FOX', 'BEN', 'FCX', 'GRMN', 'IT', 'GEHC', 'GEN', 'GNRC', 'GD', 
+  'GE', 'GIS', 'GM', 'GPC', 'GILD', 'GL', 'GPN', 'GS', 'HAL', 'HIG', 'HAS', 'HCA', 'PEAK', 'HSIC', 'HSY', 'HES', 
+  'HPE', 'HLT', 'HOLX', 'HD', 'HON', 'HRL', 'HST', 'HWM', 'HPQ', 'HUM', 'HBAN', 'HII', 'IBM', 'IEX', 'IDXX', 'ITW', 
+  'ILMN', 'INCY', 'IR', 'PODD', 'INTC', 'ICE', 'IFF', 'IP', 'IPG', 'INTU', 'ISRG', 'IVZ', 'INVH', 'IQV', 'IRM', 
+  'JBHT', 'JKHY', 'J', 'JNJ', 'JCI', 'JPM', 'JNPR', 'K', 'KDP', 'KEY', 'KEYS', 'KMB', 'KIM', 'KMI', 'KLAC', 'KHC', 
+  'KR', 'LHX', 'LH', 'LRCX', 'LW', 'LVS', 'LDOS', 'LEN', 'LIN', 'LYV', 'LKQ', 'LMT', 'L', 'LOW', 'LUMN', 'LYB', 'MTB', 
+  'MRO', 'MPC', 'MKTX', 'MAR', 'MMC', 'MLM', 'MAS', 'MA', 'MTCH', 'MKC', 'MCD', 'MCK', 'MDT', 'MRK', 'META', 'MET', 
+  'MTD', 'MGM', 'MCHP', 'MU', 'MSFT', 'MAA', 'MRNA', 'MHK', 'MOH', 'TAP', 'MDLZ', 'MPWR', 'MNST', 'MCO', 'MS', 'MOS', 
+  'MSI', 'MSCI', 'NDAQ', 'NTAP', 'NFLX', 'NWL', 'NEM', 'NWSA', 'NWS', 'NEE', 'NKE', 'NI', 'NDSN', 'NSC', 'NTRS', 
+  'NOC', 'NLOK', 'NCLH', 'NRG', 'NUE', 'NVDA', 'NVR', 'NXPI', 'ORLY', 'OXY', 'ODFL', 'OMC', 'ON', 'OKE', 'ORCL', 
+  'OGN', 'OTIS', 'PCAR', 'PKG', 'PARA', 'PH', 'PAYX', 'PAYC', 'PYPL', 'PNR', 'PEP', 'PKI', 'PFE', 'PCG', 'PM', 
+  'PSX', 'PNW', 'PXD', 'PNC', 'POOL', 'PPG', 'PPL', 'PFG', 'PG', 'PGR', 'PLD', 'PRU', 'PEG', 'PTC', 'PSA', 'PHM', 
+  'QRVO', 'PWR', 'QCOM', 'DGX', 'RL', 'RJF', 'RTX', 'O', 'REG', 'REGN', 'RF', 'RSG', 'RMD', 'RHI', 'ROK', 'ROL', 
+  'ROP', 'ROST', 'RCL', 'SPGI', 'CRM', 'SBAC', 'SLB', 'STX', 'SEE', 'SRE', 'NOW', 'SHW', 'SPG', 'SWKS', 'SJM', 'SNA', 
+  'SEDG', 'SO', 'LUV', 'SWK', 'SBUX', 'STT', 'STLD', 'STE', 'SYK', 'SYF', 'SNPS', 'SYY', 'TMUS', 'TROW', 'TTWO', 'TPR', 
+  'TRGP', 'TGT', 'TEL', 'TDY', 'TFX', 'TER', 'TSLA', 'TXN', 'TXT', 'TMO', 'TJX', 'TSCO', 'TT', 'TDG', 'TRV', 'TRMB', 
+  'TFC', 'TYL', 'TSN', 'USB', 'UDR', 'ULTA', 'UNP', 'UAL', 'UPS', 'URI', 'UNH', 'UHS', 'VLO', 'VTR', 'VRSN', 'VRSK', 
+  'VZ', 'VRTX', 'VFC', 'VTRS', 'VICI', 'V', 'VMC', 'WAB', 'WBA', 'WMT', 'WBD', 'WM', 'WAT', 'WEC', 'WFC', 'WELL', 
+  'WST', 'WDC', 'WRK', 'WY', 'WHR', 'WMB', 'WTW', 'GWW', 'WYNN', 'XEL', 'XYL', 'YUM', 'ZBRA', 'ZBH', 'ZION', 'ZTS'
+]);
 
-export const NASDAQ100_TICKERS: string[] = [
-  'AAPL', 'MSFT', 'AMZN', 'GOOG', 'GOOGL', 'FB', 'TSLA', 'NVDA', 
-  'PYPL', 'ADBE', 'NFLX', 'CMCSA', 'PEP', 'INTC', 'CSCO', 'AVGO', 
-  'TXN', 'QCOM', 'COST', 'TMUS', 'AMGN', 'SBUX', 'INTU', 'CHTR', 
-  'AMD', 'ISRG', 'BKNG', 'MDLZ', 'ZM', 'GILD', 'FISV', 'REGN', 
-  'ADP', 'MELI', 'ATVI', 'MU', 'CSX', 'ILMN', 'LRCX', 'ADSK',
-  'JD', 'MNST', 'ADI', 'KDP', 'KHC', 'EXC', 'BIIB', 'AMAT', 'DXCM',
-  'EA', 'WBA', 'MAR', 'LULU', 'EBAY', 'VRTX', 'CTAS', 'SNPS', 'WDAY',
-  'ROST', 'DLTR', 'ALGN', 'MTCH', 'CDNS', 'NXPI', 'PCAR', 'XLNX',
-  'KLAC', 'FAST', 'IDXX', 'VRSK', 'MCHP', 'CTSH', 'SIRI', 'ORLY',
-  'ANSS', 'PAYX', 'ALXN', 'CPRT', 'VRSN', 'SPLK', 'SWKS', 'CERN',
-  'CDW', 'TCOM', 'XEL', 'FOXA', 'FOX', 'NTAP', 'EXPE', 'ASML', 'BIDU'
-];
+// NASDAQ 100 tickers from Wikipedia
+export const NASDAQ100_TICKERS: string[] = removeDuplicates([
+  'AAPL', 'MSFT', 'AMZN', 'NVDA', 'GOOGL', 'GOOG', 'META', 'AVGO', 'TSLA', 'COST', 
+  'PEP', 'ADBE', 'NFLX', 'AMD', 'CSCO', 'CMCSA', 'TMUS', 'INTU', 'INTC', 'QCOM', 
+  'TXN', 'AMGN', 'AMAT', 'HON', 'ISRG', 'SBUX', 'VRTX', 'GILD', 'ADP', 'MDLZ', 
+  'ADI', 'REGN', 'BKNG', 'MRNA', 'LRCX', 'PYPL', 'PANW', 'MU', 'CSX', 'KLAC', 
+  'ASML', 'CTAS', 'SNPS', 'CDNS', 'MCHP', 'ORLY', 'MNST', 'ADSK', 'ABNB', 'NXPI', 
+  'CRWD', 'PCAR', 'PAYX', 'MRVL', 'ODFL', 'KDP', 'KHC', 'EXC', 'FTNT', 'MAR', 
+  'FAST', 'CTSH', 'DXCM', 'LULU', 'AEP', 'CPRT', 'ROST', 'XEL', 'FANG', 'CSGP', 
+  'VRSK', 'EA', 'DLTR', 'CHTR', 'BKR', 'WBD', 'IDXX', 'CEG', 'BIIB', 'ANSS', 
+  'ENPH', 'WDAY', 'ILMN', 'DDOG', 'ALGN', 'ON', 'ZS', 'SIRI', 'LCID', 'SPLK', 
+  'TEAM', 'MTCH', 'ZM', 'ATVI', 'WBA', 'PDD', 'JD', 'EBAY', 'MELI', 'OKTA',
+  'DASH', 'RIVN', 'COIN', 'RBLX', 'DKNG', 'TTD'
+]);
 
 // Función genérica para realizar llamadas a la API
 export const fetchFinancialData = async (url: string, params: any = {}) => {

@@ -89,7 +89,11 @@ export const fetchBacktestResults = async (params: BacktestParams) => {
               if (!combinedData[item.date]) {
                 combinedData[item.date] = { date: item.date };
               }
-              combinedData[item.date][ticker] = item[ticker];
+              
+              // Asegurarse de que el ticker existe en el item
+              if (item[ticker] !== undefined) {
+                combinedData[item.date][ticker] = item[ticker];
+              }
             });
           }
         });
@@ -123,15 +127,15 @@ export const fetchBacktestResults = async (params: BacktestParams) => {
         )
       );
       
-      const historicalDataResponses = await Promise.all(historicalDataPromises);
+      const historicalDataResponses = await Promise.allSettled(historicalDataPromises);
       
       // Verificar fuentes de datos
       for (const response of historicalDataResponses) {
-        if (response && response.dataSource) {
-          if (response.dataSource === 'Yahoo Finance') {
+        if (response.status === 'fulfilled' && response.value && response.value.dataSource) {
+          if (response.value.dataSource === 'Yahoo Finance') {
             dataSource = 'Yahoo Finance';
             break;
-          } else if (response.dataSource === 'Simulated Data' && dataSource !== 'Yahoo Finance') {
+          } else if (response.value.dataSource === 'Simulated Data' && dataSource !== 'Yahoo Finance') {
             dataSource = 'Simulated Data';
           }
         }
@@ -141,18 +145,20 @@ export const fetchBacktestResults = async (params: BacktestParams) => {
       let combinedData: any = {};
       
       historicalDataResponses.forEach((response, index) => {
-        const ticker = allTickers[index];
-        if (response && response.historical && response.historical.length > 0) {
-          const transformedData = transformFMPHistoricalData(response.historical, ticker);
-          
-          transformedData.forEach((item: any) => {
-            if (!combinedData[item.date]) {
-              combinedData[item.date] = { date: item.date };
-            }
-            combinedData[item.date][ticker] = item[ticker];
-          });
-        } else {
-          console.warn(`No historical data available for ${ticker} in backtesting`);
+        if (response.status === 'fulfilled' && response.value) {
+          const ticker = allTickers[index];
+          if (response.value.historical && response.value.historical.length > 0) {
+            const transformedData = transformFMPHistoricalData(response.value.historical, ticker);
+            
+            transformedData.forEach((item: any) => {
+              if (!combinedData[item.date]) {
+                combinedData[item.date] = { date: item.date };
+              }
+              combinedData[item.date][ticker] = item[ticker];
+            });
+          } else {
+            console.warn(`No historical data available for ${ticker} in backtesting`);
+          }
         }
       });
       

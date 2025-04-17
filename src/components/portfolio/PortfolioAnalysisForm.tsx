@@ -59,6 +59,15 @@ const PortfolioAnalysisForm = () => {
     
     const tickersList = tickers.split(",").map(t => t.trim().toUpperCase());
     
+    if (tickersList.length === 0 || tickersList[0] === "") {
+      toast({
+        title: "Error en la entrada",
+        description: "Por favor, ingrese al menos un ticker.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     // Parse weights if provided, otherwise assume equal weights
     let weightsList: number[] = [];
     if (weights.trim() === "") {

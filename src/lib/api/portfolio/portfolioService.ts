@@ -2,7 +2,7 @@
 // Portfolio analysis service
 
 import { FINANCIAL_MODELING_PREP_API_KEY } from '../constants';
-import { fetchFinancialData, fetchStockRecommendations } from '../utils/apiUtils';
+import { fetchFinancialData, fetchYahooFinanceData } from '../utils/apiUtils';
 import { 
   calculateStartDate, 
   getTodayDate, 
@@ -127,6 +127,155 @@ export const fetchPortfolioData = async (
     
     let dataSource = '';
     
+    // Primero intentar con Yahoo Finance directamente
+    try {
+      console.log("Attempting to fetch data from Yahoo Finance...");
+      const yahooPromises = allTickers.map(ticker => 
+        fetchYahooFinanceData(ticker, calculateStartDate(period), getTodayDate())
+      );
+      
+      const yahooResponses = await Promise.allSettled(yahooPromises);
+      const successfulYahooResponses = yahooResponses.filter(
+        response => response.status === 'fulfilled' && response.value && response.value.historical && response.value.historical.length > 0
+      );
+      
+      // Si tenemos suficientes datos de Yahoo (al menos 80% de los tickers)
+      if (successfulYahooResponses.length >= allTickers.length * 0.8) {
+        console.log("Using Yahoo Finance data for portfolio analysis");
+        dataSource = 'Yahoo Finance';
+        
+        // Procesar y combinar datos históricos
+        let combinedData: any = {};
+        
+        yahooResponses.forEach((response, index) => {
+          if (response.status === 'fulfilled' && response.value && response.value.historical) {
+            const ticker = allTickers[index];
+            const transformedData = response.value.historical;
+            
+            transformedData.forEach((item: any) => {
+              if (!combinedData[item.date]) {
+                combinedData[item.date] = { date: item.date };
+              }
+              combinedData[item.date][ticker] = item[ticker];
+            });
+          }
+        });
+        
+        // Convertir a array y ordenar por fecha
+        const sortedHistoricalData = Object.values(combinedData)
+          .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        
+        if (sortedHistoricalData.length > 0) {
+          // Calcular retornos diarios
+          const dailyReturns = calculateDailyReturns(sortedHistoricalData);
+          
+          // Verificar que hay datos suficientes para continuar
+          if (dailyReturns.length > 0) {
+            // Calcular retornos acumulados
+            const cumulativeReturns = calculateCumulativeReturns(dailyReturns);
+            
+            // Verificar que hay datos del benchmark
+            const hasBenchmarkData = dailyReturns.some(day => day[benchmark] !== undefined);
+            if (!hasBenchmarkData) {
+              throw new Error(`No hay datos disponibles para el benchmark ${benchmark} en el período seleccionado`);
+            }
+            
+            // Calcular rendimiento del portafolio usando los pesos
+            const portfolioPerformance = cumulativeReturns.map((day: any) => {
+              const portfolioValue = allTickers.reduce((acc, ticker, idx) => {
+                if (day[ticker] !== undefined && idx < portfolioWeights.length) {
+                  return acc + (day[ticker] * portfolioWeights[idx]);
+                }
+                return acc;
+              }, 0);
+              
+              return {
+                date: day.date,
+                portfolio: portfolioValue,
+                benchmark: day[benchmark] || 0
+              };
+            });
+            
+            // Calcular métricas (rendimiento anual, volatilidad, etc.)
+            const metrics = calculateMetrics(dailyReturns);
+            
+            // Inicializar las métricas del portafolio antes de usarlas
+            const portfolioMetrics = {
+              annualReturn: 0,
+              volatility: 0,
+              sharpeRatio: 0,
+              maxDrawdown: 0,
+              alpha: 0,
+              beta: 1
+            };
+            
+            // Calcular matriz de correlación
+            const correlationMatrix = calculateCorrelationMatrix(dailyReturns);
+            
+            // Extraer métricas específicas del portafolio
+            portfolioMetrics.annualReturn = allTickers.reduce((acc, ticker, idx) => {
+              // Verificar que existe la métrica para este ticker
+              if (metrics[ticker] && typeof metrics[ticker].annualReturn === 'number' && idx < portfolioWeights.length) {
+                return acc + metrics[ticker].annualReturn * portfolioWeights[idx];
+              }
+              return acc;
+            }, 0);
+            
+            portfolioMetrics.volatility = Math.sqrt(
+              portfolioWeights.reduce((acc, weight, i) => {
+                if (i >= allTickers.length || !metrics[allTickers[i]]) return acc;
+                
+                return acc + portfolioWeights.reduce((innerAcc, innerWeight, j) => {
+                  if (j >= allTickers.length || !metrics[allTickers[j]]) return innerAcc;
+                  
+                  // Usar matriz de correlación solo si ambos índices son válidos
+                  const correlation = i < correlationMatrix.length && j < correlationMatrix[i].length 
+                    ? correlationMatrix[i][j] 
+                    : 0;
+                  
+                  return innerAcc + weight * innerWeight * correlation * 
+                    (metrics[allTickers[i]].volatility || 0) * (metrics[allTickers[j]].volatility || 0);
+                }, 0);
+              }, 0)
+            );
+            
+            portfolioMetrics.maxDrawdown = Math.min(...portfolioPerformance.map((day: any, idx: number, arr: any[]) => {
+              if (idx === 0) return 0;
+              const maxPrevValue = Math.max(...arr.slice(0, idx).map((d: any) => d.portfolio || 0));
+              return maxPrevValue > 0 ? (day.portfolio / maxPrevValue) - 1 : 0;
+            }));
+            
+            portfolioMetrics.alpha = metrics[benchmark] ? 
+              portfolioMetrics.annualReturn - (metrics[benchmark].annualReturn || 0) : 0;
+            
+            // Calcular Sharpe Ratio del portafolio solo si la volatilidad es > 0
+            portfolioMetrics.sharpeRatio = portfolioMetrics.volatility > 0 ? 
+              portfolioMetrics.annualReturn / portfolioMetrics.volatility : 0;
+            
+            return {
+              performanceChart: portfolioPerformance,
+              correlationMatrix,
+              metrics: portfolioMetrics,
+              stockMetrics: Object.fromEntries(
+                allTickers.map(ticker => [ticker, metrics[ticker] || {
+                  annualReturn: 0,
+                  volatility: 0,
+                  sharpeRatio: 0,
+                  maxDrawdown: 0,
+                  beta: ticker === benchmark ? 1 : 0,
+                  alpha: 0
+                }])
+              ),
+              dataSource: 'Yahoo Finance'
+            };
+          }
+        }
+      }
+    } catch (yahooError) {
+      console.error("Error obteniendo datos de Yahoo Finance:", yahooError);
+    }
+    
+    // Si Yahoo Finance falla, intentar con la API de Financial Modeling Prep
     try {
       // Obtener datos históricos para cada ticker
       const historicalDataPromises = allTickers.map(ticker => 
@@ -178,6 +327,10 @@ export const fetchPortfolioData = async (
             return null;
           }
         }));
+      }
+      
+      if (!historicalDataResponses || historicalDataResponses.length === 0) {
+        throw new Error("No se pudieron obtener datos históricos");
       }
       
       // Procesar y combinar datos históricos
@@ -241,7 +394,7 @@ export const fetchPortfolioData = async (
         return {
           date: day.date,
           portfolio: portfolioValue,
-          benchmark: day[benchmark]
+          benchmark: day[benchmark] || 0
         };
       });
       
@@ -316,12 +469,12 @@ export const fetchPortfolioData = async (
       
       portfolioMetrics.maxDrawdown = Math.min(...portfolioPerformance.map((day: any, idx: number, arr: any[]) => {
         if (idx === 0) return 0;
-        const maxPrevValue = Math.max(...arr.slice(0, idx).map((d: any) => d.portfolio));
-        return (day.portfolio / maxPrevValue) - 1;
+        const maxPrevValue = Math.max(...arr.slice(0, idx).map((d: any) => d.portfolio || 0));
+        return maxPrevValue > 0 ? (day.portfolio / maxPrevValue) - 1 : 0;
       }));
       
       portfolioMetrics.alpha = metrics[benchmark] ? 
-        portfolioMetrics.annualReturn - metrics[benchmark].annualReturn : 0;
+        portfolioMetrics.annualReturn - (metrics[benchmark].annualReturn || 0) : 0;
       
       // Calcular Sharpe Ratio del portafolio solo si la volatilidad es > 0
       portfolioMetrics.sharpeRatio = portfolioMetrics.volatility > 0 ? 
