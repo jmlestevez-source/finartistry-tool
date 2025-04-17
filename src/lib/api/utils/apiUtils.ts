@@ -115,13 +115,15 @@ const transformYahooToFMPFormat = (yahooData: any, ticker: string) => {
         close: quotes.close?.[index] || null,
         adjClose: adjClose[index] || quotes.close?.[index] || null,
         volume: quotes.volume?.[index] || null,
-        symbol: ticker
+        symbol: ticker,
+        dataSource: 'Yahoo Finance'  // Añadir fuente de datos
       };
     }).filter(item => item.close !== null); // Filtrar datos incompletos
     
     return {
       symbol: ticker,
-      historical: historical.reverse() // FMP tiene los datos más recientes primero
+      historical: historical.reverse(), // FMP tiene los datos más recientes primero
+      dataSource: 'Yahoo Finance' // Añadir fuente de datos
     };
   } catch (error) {
     console.error("Error transformando datos de Yahoo Finance:", error);
@@ -163,6 +165,27 @@ export const fetchAlphaVantageData = async (function_name: string, params: Recor
   }
 };
 
+// Índices principales para recomendaciones
+const STOXX50_TICKERS = [
+  'ADS.DE', 'ADYEN.AS', 'AI.PA', 'AIR.PA', 'ALV.DE', 'ASML.AS', 'BAS.DE', 'BAYN.DE',
+  'BMW.DE', 'BNP.PA', 'CRH.AS', 'CS.PA', 'DHER.DE', 'DPW.DE', 'DTE.DE', 'ENEL.MI',
+  'ENGI.PA', 'ENI.MI', 'EL.PA', 'IBE.MC', 'IFX.DE', 'INGA.AS', 'ISP.MI', 'KER.PA',
+  'MC.PA', 'MUV2.DE', 'OR.PA', 'ORA.PA', 'PHG.AS', 'PHIA.AS', 'PRX.AS', 'RMS.PA',
+  'SAN.MC', 'SAN.PA', 'SAP.DE', 'SIE.DE', 'STLA.MI', 'SU.PA', 'TEF.MC', 'TTE.PA'
+];
+
+// Lista parcial de SP500 - seleccionando algunos de los más representativos
+const SP500_TICKERS = [
+  'AAPL', 'MSFT', 'AMZN', 'NVDA', 'GOOGL', 'GOOG', 'META', 'TSLA', 'BRK-B', 'UNH',
+  'JPM', 'V', 'JNJ', 'PG', 'XOM', 'MA', 'HD', 'CVX', 'MRK', 'LLY'
+];
+
+// Lista parcial de NASDAQ 100 - seleccionando algunos de los más representativos
+const NASDAQ100_TICKERS = [
+  'AAPL', 'MSFT', 'AMZN', 'NVDA', 'GOOGL', 'GOOG', 'META', 'TSLA', 'AVGO', 'COST',
+  'PEP', 'CSCO', 'ADBE', 'NFLX', 'CMCSA', 'QCOM', 'INTC', 'AMD', 'TXN', 'PYPL'
+];
+
 // Función para obtener recomendaciones de acciones basadas en métricas
 export const fetchStockRecommendations = async (
   tickers: string[],
@@ -172,11 +195,9 @@ export const fetchStockRecommendations = async (
   try {
     console.log(`Buscando recomendaciones basadas en ${metric}`);
     
-    // Lista de tickers populares para analizar
+    // Combinar tickers de los índices principales, eliminando duplicados
     const popularStocks = [
-      'AAPL', 'MSFT', 'AMZN', 'GOOGL', 'FB', 'TSLA', 'NVDA', 'JPM', 'V', 'JNJ',
-      'WMT', 'BAC', 'PG', 'MA', 'DIS', 'ADBE', 'CRM', 'NFLX', 'XOM', 'KO',
-      'INTC', 'PFE', 'CSCO', 'VZ', 'ABT', 'PEP', 'TMO', 'CMCSA', 'ACN', 'COST'
+      ...new Set([...STOXX50_TICKERS, ...SP500_TICKERS, ...NASDAQ100_TICKERS])
     ].filter(stock => !tickers.includes(stock)); // Excluir los tickers que ya están en la cartera
     
     // Para un escenario real, habría que obtener datos históricos de Yahoo Finance
@@ -201,18 +222,18 @@ export const fetchStockRecommendations = async (
     if (metric === 'sharpe') {
       // Mayor sharpe es mejor
       sortedStocks = Object.entries(mockMetrics)
-        .map(([ticker, metrics]) => [ticker, metrics.sharpe])
-        .sort((a, b) => (b[1] as number) - (a[1] as number));
+        .map(([ticker, metrics]) => [ticker, metrics.sharpe] as [string, number])
+        .sort((a, b) => b[1] - a[1]);
     } else if (metric === 'volatility') {
       // Menor volatilidad es mejor
       sortedStocks = Object.entries(mockMetrics)
-        .map(([ticker, metrics]) => [ticker, metrics.volatility])
-        .sort((a, b) => (a[1] as number) - (b[1] as number));
+        .map(([ticker, metrics]) => [ticker, metrics.volatility] as [string, number])
+        .sort((a, b) => a[1] - b[1]);
     } else {
       // Menor correlación es mejor
       sortedStocks = Object.entries(mockMetrics)
-        .map(([ticker, metrics]) => [ticker, metrics.correlation])
-        .sort((a, b) => (a[1] as number) - (b[1] as number));
+        .map(([ticker, metrics]) => [ticker, metrics.correlation] as [string, number])
+        .sort((a, b) => a[1] - b[1]);
     }
     
     // Retornar solo las mejores recomendaciones

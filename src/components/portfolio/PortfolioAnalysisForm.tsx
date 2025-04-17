@@ -15,7 +15,7 @@ import { PortfolioAnalysisResults } from "./PortfolioAnalysisResults";
 import { fetchPortfolioData } from "@/lib/api/financeAPI";
 import { Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Info } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -32,12 +32,14 @@ const PortfolioAnalysisForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [portfolioData, setPortfolioData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [dataSource, setDataSource] = useState<string>(""); // Nueva variable para la fuente de datos
   
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setDataSource("");
     
     const tickersList = tickers.split(",").map(t => t.trim().toUpperCase());
     
@@ -98,6 +100,11 @@ const PortfolioAnalysisForm = () => {
       }
       
       setPortfolioData(data);
+      
+      // Comprobar si los datos vienen de Yahoo Finance
+      if (data.dataSource === "Yahoo Finance") {
+        setDataSource("Yahoo Finance");
+      }
       
       toast({
         title: "¡Datos obtenidos!",
@@ -188,6 +195,16 @@ const PortfolioAnalysisForm = () => {
           )}
         </Button>
       </form>
+      
+      {dataSource === "Yahoo Finance" && (
+        <Alert variant="default" className="bg-yellow-50 dark:bg-yellow-950 border-yellow-200">
+          <Info className="h-4 w-4" />
+          <AlertTitle>Fuente de datos</AlertTitle>
+          <AlertDescription>
+            Datos descargados desde Yahoo Finance debido a limitaciones de la API principal.
+          </AlertDescription>
+        </Alert>
+      )}
       
       {error && (
         <Alert variant="destructive">

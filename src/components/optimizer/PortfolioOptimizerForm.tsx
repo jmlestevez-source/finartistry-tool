@@ -8,10 +8,19 @@ import {
   Card, 
   CardContent
 } from "@/components/ui/card";
-import { OptimizerModel, fetchOptimizedPortfolio } from "@/lib/api/optimizer/optimizerService";
-import { Loader2, Plus } from "lucide-react";
+import { 
+  OptimizerModel, 
+  fetchOptimizedPortfolio,
+} from "@/lib/api/financeAPI";
+import { 
+  fetchStockRecommendations,
+  STOXX50_TICKERS, 
+  SP500_TICKERS, 
+  NASDAQ100_TICKERS 
+} from "@/lib/api/utils/apiUtils";
+import { Loader2, Plus, Info } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle, Info } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { PortfolioOptimizerResults } from "./PortfolioOptimizerResults";
 import {
   Select,
@@ -20,10 +29,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { fetchStockRecommendations } from "@/lib/api/utils/apiUtils";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const PortfolioOptimizerForm = () => {
   const [tickers, setTickers] = useState("");
@@ -39,6 +48,8 @@ const PortfolioOptimizerForm = () => {
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
   const [showRecommendations, setShowRecommendations] = useState(false);
   const [selectedRecommendations, setSelectedRecommendations] = useState<string[]>([]);
+  const [selectedIndex, setSelectedIndex] = useState<string>("custom");
+  const [dataSource, setDataSource] = useState<string>("");
   
   const { toast } = useToast();
 
@@ -101,9 +112,39 @@ const PortfolioOptimizerForm = () => {
     setSelectedRecommendations([]);
   };
 
+  const handleIndexSelection = (index: string) => {
+    setSelectedIndex(index);
+    let tickersToAdd: string[] = [];
+    
+    switch (index) {
+      case "stoxx50":
+        tickersToAdd = STOXX50_TICKERS.slice(0, 5);
+        break;
+      case "sp500":
+        tickersToAdd = SP500_TICKERS.slice(0, 5);
+        break;
+      case "nasdaq100":
+        tickersToAdd = NASDAQ100_TICKERS.slice(0, 5);
+        break;
+      default:
+        return;
+    }
+    
+    // Añadir estos tickers al universo de inversión
+    const currentUniverse = universe ? universe.split(",").map(t => t.trim()) : [];
+    const combinedUniverse = [...new Set([...currentUniverse, ...tickersToAdd])];
+    setUniverse(combinedUniverse.join(", "));
+    
+    toast({
+      title: "Índice seleccionado",
+      description: `Se añadieron tickers del índice seleccionado al universo de inversión.`,
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setDataSource("");
     
     const tickersList = tickers.split(",").map(t => t.trim().toUpperCase());
     
@@ -167,6 +208,11 @@ const PortfolioOptimizerForm = () => {
       
       setOptimizerData(data);
       
+      // Verificar si los datos vienen de Yahoo Finance
+      if (data.dataSource === "Yahoo Finance") {
+        setDataSource("Yahoo Finance");
+      }
+      
       toast({
         title: "¡Optimización completada!",
         description: `Se han generado recomendaciones para optimizar su cartera.`,
@@ -217,7 +263,7 @@ const PortfolioOptimizerForm = () => {
           </p>
         </div>
         
-        <div className="space-y-2">
+        <div className="space-y-4">
           <div className="flex items-center justify-between">
             <Label htmlFor="universe">
               Universo adicional de tickers a considerar
@@ -242,12 +288,23 @@ const PortfolioOptimizerForm = () => {
               )}
             </Button>
           </div>
-          <Input
-            id="universe"
-            placeholder="NVDA, AMZN, TSLA"
-            value={universe}
-            onChange={(e) => setUniverse(e.target.value)}
-          />
+          
+          <Tabs value={selectedIndex} onValueChange={handleIndexSelection} className="w-full">
+            <TabsList className="grid grid-cols-4 mb-2">
+              <TabsTrigger value="custom">Personalizado</TabsTrigger>
+              <TabsTrigger value="stoxx50">STOXX 50</TabsTrigger>
+              <TabsTrigger value="sp500">S&P 500</TabsTrigger>
+              <TabsTrigger value="nasdaq100">NASDAQ 100</TabsTrigger>
+            </TabsList>
+            
+            <Input
+              id="universe"
+              placeholder="NVDA, AMZN, TSLA"
+              value={universe}
+              onChange={(e) => setUniverse(e.target.value)}
+            />
+          </Tabs>
+          
           <p className="text-sm text-muted-foreground">
             Tickers adicionales que podrían ser recomendados para su cartera.
           </p>
@@ -362,6 +419,16 @@ const PortfolioOptimizerForm = () => {
           )}
         </Button>
       </form>
+      
+      {dataSource === "Yahoo Finance" && (
+        <Alert variant="default" className="bg-yellow-50 dark:bg-yellow-950 border-yellow-200">
+          <Info className="h-4 w-4" />
+          <AlertTitle>Fuente de datos</AlertTitle>
+          <AlertDescription>
+            Datos descargados desde Yahoo Finance debido a limitaciones de la API principal.
+          </AlertDescription>
+        </Alert>
+      )}
       
       {error && (
         <Alert variant="destructive">
