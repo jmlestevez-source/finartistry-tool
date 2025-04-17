@@ -1,4 +1,3 @@
-
 // Backtesting utility functions
 
 export const runBacktest = (historicalData: any[], tickers: string[], initialWeights: number[], benchmark: string, rebalancePeriod: string) => {
@@ -97,7 +96,8 @@ export const runBacktest = (historicalData: any[], tickers: string[], initialWei
     allocationOverTime,
     rollingReturns: rollingMetrics.returns,
     rollingVolatility: rollingMetrics.volatility,
-    rollingSharpe: rollingMetrics.sharpe
+    rollingSharpe: rollingMetrics.sharpe,
+    dataSource: undefined // Add this to fix TypeScript error
   };
 };
 
