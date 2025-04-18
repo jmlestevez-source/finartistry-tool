@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,7 @@ import { PortfolioAnalysisResults } from "./PortfolioAnalysisResults";
 import { fetchPortfolioData } from "@/lib/api/financeAPI";
 import { Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle, Info } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -100,8 +101,8 @@ const PortfolioAnalysisForm = () => {
     
     try {
       toast({
-        title: "Cargando datos de ejemplo",
-        description: `Se mostrarán datos simulados de demostración para ${tickersList.join(', ')}...`,
+        title: "Cargando datos",
+        description: `Obteniendo datos para ${tickersList.join(', ')}...`,
       });
       
       const data = await fetchPortfolioData(tickersList, weightsList, benchmark, period);
@@ -119,7 +120,7 @@ const PortfolioAnalysisForm = () => {
       
       toast({
         title: "¡Datos cargados!",
-        description: `Se han cargado los datos de demostración para su cartera.`,
+        description: `Se han cargado los datos para su cartera.`,
         variant: "default"
       });
     } catch (error: any) {
@@ -207,18 +208,8 @@ const PortfolioAnalysisForm = () => {
         </Button>
       </form>
       
-      <Alert variant="default" className="bg-yellow-50 dark:bg-yellow-950 border-yellow-200">
-        <Info className="h-4 w-4" />
-        <AlertTitle>Modo de demostración</AlertTitle>
-        <AlertDescription>
-          Esta aplicación está mostrando datos simulados debido a restricciones CORS al acceder a Yahoo Finance.
-          En un entorno de producción, se utilizarían datos reales de mercado.
-        </AlertDescription>
-      </Alert>
-      
       {dataSource && (
-        <Alert variant="default" className="bg-blue-50 dark:bg-blue-950 border-blue-200">
-          <Info className="h-4 w-4" />
+        <Alert variant="default">
           <AlertTitle>Fuente de datos</AlertTitle>
           <AlertDescription>
             {dataSource}

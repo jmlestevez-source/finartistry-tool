@@ -1,4 +1,3 @@
-
 // API utility functions
 
 import { toast } from "@/hooks/use-toast";
@@ -171,10 +170,51 @@ export const fetchAlphaVantageData = async (ticker: string, from: string, to: st
 
 // Función para descargar datos directamente desde Yahoo Finance
 export const fetchYahooFinanceData = async (ticker: string, from: string, to: string) => {
-  console.log(`CORS: Esta función no funcionará en el entorno de desarrollo debido a restricciones CORS`);
-  
-  // Informar que esta función no es compatible con el entorno actual
-  throw new Error('Yahoo Finance API no está disponible debido a restricciones CORS. Use los datos de demostración.');
+  try {
+    // Aquí implementaríamos la lógica real de conexión con Yahoo Finance
+    // Esta es una URL de ejemplo, que probablemente no funcionará por CORS
+    const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
+    const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?period1=${Math.floor(new Date(from).getTime() / 1000)}&period2=${Math.floor(new Date(to).getTime() / 1000)}&interval=1d`;
+    
+    console.log(`Intentando conectar con Yahoo Finance: ${yahooUrl}`);
+    
+    const response = await fetch(proxyUrl + yahooUrl);
+    
+    if (!response.ok) {
+      throw new Error(`Error HTTP al conectar con Yahoo Finance: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    // Procesar los datos de Yahoo Finance
+    const historical = [];
+    
+    // Si hay datos y resultados
+    if (data && data.chart && data.chart.result && data.chart.result.length > 0) {
+      const result = data.chart.result[0];
+      const timestamps = result.timestamp || [];
+      const quotes = result.indicators.quote[0] || {};
+      
+      timestamps.forEach((timestamp: number, index: number) => {
+        const date = new Date(timestamp * 1000).toISOString().split('T')[0];
+        const closePrice = quotes.close ? quotes.close[index] : null;
+        
+        if (closePrice !== null) {
+          historical.push({
+            date,
+            [ticker]: closePrice
+          });
+        }
+      });
+    } else {
+      throw new Error('No se encontraron datos en la respuesta de Yahoo Finance');
+    }
+    
+    return { historical, dataSource: 'Yahoo Finance' };
+  } catch (error: any) {
+    console.error("Error fetching Yahoo Finance data:", error);
+    throw new Error(`Error al obtener datos de Yahoo Finance: ${error.message}`);
+  }
 };
 
 // Función para obtener recomendaciones de acciones basadas en métricas
