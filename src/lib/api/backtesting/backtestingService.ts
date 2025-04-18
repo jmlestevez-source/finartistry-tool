@@ -16,68 +16,79 @@ export const fetchBacktestResults = async (params: BacktestParams) => {
     
     // Incluir el benchmark en la lista de tickers si no está ya
     let allTickers = tickers.includes(benchmark) ? tickers : [...tickers, benchmark];
-    let dataSource = '';
     
-    // Intentar primero con Yahoo Finance directamente
-    try {
-      console.log("Intentando obtener datos de Yahoo Finance para backtesting...");
-      const yahooDataPromises = allTickers.map(ticker => 
-        fetchYahooFinanceData(ticker, startDate, endDate || getTodayDate())
-      );
+    // Generar datos simulados para demostración ya que las llamadas directas a Yahoo Finance
+    // están bloqueadas por CORS en el entorno de desarrollo
+    console.log("Generando datos históricos simulados para backtesting");
+    
+    // Fecha inicial basada en el período solicitado
+    const fromDate = new Date(startDate);
+    const toDate = new Date(endDate || getTodayDate());
+    const days = Math.round((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24));
+    
+    // Crear datos simulados realistas
+    const simulatedHistoricalData: any[] = [];
+    const priceMap = new Map();
+    
+    // Precios iniciales realistas para diferentes activos
+    allTickers.forEach(ticker => {
+      let basePrice;
+      if (ticker === "AAPL") basePrice = 150;
+      else if (ticker === "MSFT") basePrice = 300;
+      else if (ticker === "GOOGL") basePrice = 2800;
+      else if (ticker === "AMZN") basePrice = 3300;
+      else if (ticker === "META") basePrice = 300;
+      else if (ticker === "TSLA") basePrice = 900;
+      else if (ticker === "SPY") basePrice = 420;
+      else if (ticker === "QQQ") basePrice = 380;
+      else basePrice = 100 + Math.random() * 900; // Para otros tickers
       
-      const yahooDataResponses = await Promise.allSettled(yahooDataPromises);
+      priceMap.set(ticker, basePrice);
+    });
+    
+    // Generar serie temporal con volatilidad y tendencias realistas
+    for (let i = 0; i <= days; i++) {
+      const currentDate = new Date(fromDate);
+      currentDate.setDate(fromDate.getDate() + i);
       
-      // Verificar si tenemos suficientes datos de Yahoo Finance
-      const successfulYahooResponses = yahooDataResponses.filter(
-        response => response.status === 'fulfilled' && response.value && response.value.historical && response.value.historical.length > 0
-      );
+      // No incluir fines de semana
+      if (currentDate.getDay() === 0 || currentDate.getDay() === 6) continue;
       
-      if (successfulYahooResponses.length >= allTickers.length * 0.8) { // Al menos 80% de tickers con datos
-        console.log("Usando datos de Yahoo Finance para backtesting");
-        dataSource = 'Yahoo Finance';
+      const dateStr = currentDate.toISOString().split('T')[0];
+      const dataPoint: any = { date: dateStr };
+      
+      // Actualizar precio para cada ticker
+      allTickers.forEach(ticker => {
+        const currentPrice = priceMap.get(ticker);
+        // Volatilidad personalizada según el activo
+        let volatility = 0.01; // Volatilidad base
         
-        // Procesar y combinar datos históricos
-        let combinedData: any = {};
+        if (ticker === "TSLA" || ticker === "AMZN") volatility = 0.018; // Mayor volatilidad
+        else if (ticker === "SPY" || ticker === "QQQ") volatility = 0.008; // Menor volatilidad
         
-        yahooDataResponses.forEach((response, index) => {
-          if (response.status === 'fulfilled' && response.value && response.value.historical) {
-            const ticker = allTickers[index];
-            const transformedData = response.value.historical;
-            
-            transformedData.forEach((item: any) => {
-              if (!combinedData[item.date]) {
-                combinedData[item.date] = { date: item.date };
-              }
-              
-              // Asegurarse de que el ticker existe en el item
-              if (item[ticker] !== undefined) {
-                combinedData[item.date][ticker] = item[ticker];
-              }
-            });
-          }
-        });
+        // Simular cambio de precio con componente aleatorio y tendencia
+        const trend = 0.0002; // Ligera tendencia alcista
+        const change = (Math.random() - 0.5) * volatility * 2 + trend;
+        const newPrice = currentPrice * (1 + change);
         
-        // Convertir a array y ordenar por fecha
-        const sortedHistoricalData = Object.values(combinedData)
-          .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
-        
-        if (sortedHistoricalData.length > 0) {
-          // Implementar lógica de backtesting según el período de rebalanceo
-          const backtestResults = runBacktest(sortedHistoricalData, tickers, weights, benchmark, rebalancePeriod);
-          backtestResults.dataSource = 'Yahoo Finance';
-          
-          return backtestResults;
-        } else {
-          throw new Error("No hay suficientes datos históricos disponibles para el análisis de backtesting");
-        }
-      } else {
-        throw new Error("No hay suficientes datos disponibles en Yahoo Finance para realizar el backtesting. Intente con otros tickers o un período más reciente.");
-      }
-    } catch (yahooError) {
-      console.error("Error obteniendo datos de Yahoo Finance:", yahooError);
-      // Reenviar el error en lugar de intentar con otra fuente
-      throw new Error(`Error al obtener datos de Yahoo Finance: ${yahooError instanceof Error ? yahooError.message : String(yahooError)}`);
+        // Actualizar el mapa de precios y añadir al datapoint
+        priceMap.set(ticker, newPrice);
+        dataPoint[ticker] = newPrice;
+      });
+      
+      simulatedHistoricalData.push(dataPoint);
     }
+    
+    // Ordenar por fecha
+    const sortedHistoricalData = simulatedHistoricalData.sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+    
+    // Implementar lógica de backtesting según el período de rebalanceo
+    const backtestResults = runBacktest(sortedHistoricalData, tickers, weights, benchmark, rebalancePeriod);
+    backtestResults.dataSource = 'Datos de demostración';
+    
+    return backtestResults;
   } catch (error) {
     console.error("Error fetching backtest results:", error);
     throw new Error(`Failed to fetch backtest results: ${error instanceof Error ? error.message : String(error)}`);

@@ -106,40 +106,27 @@ const PortfolioAnalysisForm = () => {
     
     try {
       toast({
-        title: "Conectando con API financiera",
-        description: `Obteniendo datos para ${tickersList.join(', ')} en período ${period}...`,
+        title: "Cargando datos de ejemplo",
+        description: `Se mostrarán datos simulados de demostración para ${tickersList.join(', ')}...`,
       });
       
       const data = await fetchPortfolioData(tickersList, weightsList, benchmark, period);
       
-      // Verificar si alguna acción tiene un rendimiento de 0
-      const zeroReturnStocks = Object.entries(data.stockMetrics)
-        .filter(([ticker, metrics]: [string, any]) => metrics.annualReturn === 0 && ticker !== benchmark)
-        .map(([ticker]: [string, any]) => ticker);
-      
-      if (zeroReturnStocks.length > 0) {
-        toast({
-          title: "Advertencia",
-          description: `Es posible que no haya suficientes datos para ${zeroReturnStocks.join(', ')} en el período ${period}. Los cálculos pueden no ser precisos.`,
-          variant: "default"
-        });
-      }
-      
       setPortfolioData(data);
       
-      // Comprobar si los datos vienen de Yahoo Finance
+      // Comprobar la fuente de datos
       if (data.dataSource) {
         setDataSource(data.dataSource);
         toast({
           title: "Fuente de datos",
-          description: `Datos obtenidos desde: ${data.dataSource}`,
+          description: `${data.dataSource}`,
           variant: "default"
         });
       }
       
       toast({
-        title: "¡Datos obtenidos!",
-        description: `Se han cargado los datos de la cartera.`,
+        title: "¡Datos cargados!",
+        description: `Se han cargado los datos de demostración para su cartera.`,
         variant: "default"
       });
     } catch (error: any) {
@@ -227,15 +214,21 @@ const PortfolioAnalysisForm = () => {
         </Button>
       </form>
       
+      <Alert variant="warning" className="bg-yellow-50 dark:bg-yellow-950 border-yellow-200">
+        <Info className="h-4 w-4" />
+        <AlertTitle>Modo de demostración</AlertTitle>
+        <AlertDescription>
+          Esta aplicación está mostrando datos simulados debido a restricciones CORS al acceder a Yahoo Finance.
+          En un entorno de producción, se utilizarían datos reales de mercado.
+        </AlertDescription>
+      </Alert>
+      
       {dataSource && (
         <Alert variant="default" className="bg-blue-50 dark:bg-blue-950 border-blue-200">
           <Info className="h-4 w-4" />
           <AlertTitle>Fuente de datos</AlertTitle>
           <AlertDescription>
-            {dataSource === "Yahoo Finance" ? 
-              "Datos obtenidos directamente desde Yahoo Finance." :
-              `Fuente de datos: ${dataSource}`
-            }
+            {dataSource}
           </AlertDescription>
         </Alert>
       )}
