@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/card";
 import { PortfolioAnalysisResults } from "./PortfolioAnalysisResults";
 import { fetchPortfolioData } from "@/lib/api/financeAPI";
-import { Loader2 } from "lucide-react";
+import { Loader2, Info } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
 import {
@@ -209,7 +209,8 @@ const PortfolioAnalysisForm = () => {
       </form>
       
       {dataSource && (
-        <Alert variant="default">
+        <Alert variant="default" className="bg-yellow-50 dark:bg-yellow-950 border-yellow-200">
+          <Info className="h-4 w-4" />
           <AlertTitle>Fuente de datos</AlertTitle>
           <AlertDescription>
             {dataSource}
