@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -24,7 +23,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-// Define una interfaz para los datos del portfolio que incluye dataSource
 interface PortfolioData {
   performanceChart: any[];
   correlationMatrix: number[][];
@@ -69,15 +67,12 @@ const PortfolioAnalysisForm = () => {
       return;
     }
     
-    // Parse weights if provided, otherwise assume equal weights
     let weightsList: number[] = [];
     if (weights.trim() === "") {
-      // Equal weights
       weightsList = tickersList.map(() => 1 / tickersList.length);
     } else {
       try {
         weightsList = weights.split(",").map(w => parseFloat(w.trim()));
-        // Normalize weights if they don't sum to 1
         const sum = weightsList.reduce((acc, val) => acc + val, 0);
         if (Math.abs(sum - 1) > 0.001 && sum > 0) {
           weightsList = weightsList.map(w => w / sum);
@@ -92,7 +87,6 @@ const PortfolioAnalysisForm = () => {
       }
     }
     
-    // Check if tickers and weights have the same length
     if (tickersList.length !== weightsList.length) {
       toast({
         title: "Error en la entrada",
@@ -114,7 +108,6 @@ const PortfolioAnalysisForm = () => {
       
       setPortfolioData(data);
       
-      // Comprobar la fuente de datos
       if (data.dataSource) {
         setDataSource(data.dataSource);
         toast({
@@ -214,7 +207,7 @@ const PortfolioAnalysisForm = () => {
         </Button>
       </form>
       
-      <Alert variant="warning" className="bg-yellow-50 dark:bg-yellow-950 border-yellow-200">
+      <Alert variant="default" className="bg-yellow-50 dark:bg-yellow-950 border-yellow-200">
         <Info className="h-4 w-4" />
         <AlertTitle>Modo de demostración</AlertTitle>
         <AlertDescription>
