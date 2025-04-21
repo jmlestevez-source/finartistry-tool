@@ -15,7 +15,7 @@ import { PortfolioAnalysisResults } from "./PortfolioAnalysisResults";
 import { fetchPortfolioData } from "@/lib/api/financeAPI";
 import { Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Info } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -24,20 +24,38 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+// Define una interfaz para los datos del portfolio que incluye dataSource
+interface PortfolioData {
+  performanceChart: any[];
+  correlationMatrix: number[][];
+  metrics: {
+    annualReturn: number;
+    volatility: number;
+    sharpeRatio: number;
+    maxDrawdown: number;
+    alpha: number;
+    beta: number;
+  };
+  stockMetrics: Record<string, any>;
+  dataSource?: string;
+}
+
 const PortfolioAnalysisForm = () => {
   const [tickers, setTickers] = useState("");
   const [weights, setWeights] = useState("");
   const [benchmark, setBenchmark] = useState("SPY");
   const [period, setPeriod] = useState("5y");
   const [isLoading, setIsLoading] = useState(false);
-  const [portfolioData, setPortfolioData] = useState<any>(null);
+  const [portfolioData, setPortfolioData] = useState<PortfolioData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [dataSource, setDataSource] = useState<string>("");
   
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setDataSource("");
     
     const tickersList = tickers.split(",").map(t => t.trim().toUpperCase());
     
@@ -98,6 +116,16 @@ const PortfolioAnalysisForm = () => {
       }
       
       setPortfolioData(data);
+      
+      // Comprobar si los datos vienen de Yahoo Finance o son simulados
+      if (data.dataSource) {
+        setDataSource(data.dataSource);
+        toast({
+          title: "Fuente de datos",
+          description: `Datos obtenidos desde: ${data.dataSource}`,
+          variant: "default"
+        });
+      }
       
       toast({
         title: "¡Datos obtenidos!",
@@ -188,6 +216,21 @@ const PortfolioAnalysisForm = () => {
           )}
         </Button>
       </form>
+      
+      {dataSource && (
+        <Alert variant="default" className="bg-yellow-50 dark:bg-yellow-950 border-yellow-200">
+          <Info className="h-4 w-4" />
+          <AlertTitle>Fuente de datos</AlertTitle>
+          <AlertDescription>
+            {dataSource === "Yahoo Finance" ? 
+              "Datos descargados desde Yahoo Finance debido a limitaciones de la API principal." : 
+              dataSource === "Simulated Data" ?
+              "Usando datos simulados debido a limitaciones en el acceso a APIs financieras." :
+              `Fuente de datos: ${dataSource}`
+            }
+          </AlertDescription>
+        </Alert>
+      )}
       
       {error && (
         <Alert variant="destructive">

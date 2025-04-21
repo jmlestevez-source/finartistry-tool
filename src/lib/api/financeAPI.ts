@@ -13,6 +13,17 @@ export {
   OptimizerModel 
 } from './optimizer/optimizerService';
 
+// Export API utilities and ticker lists
+export { 
+  fetchFinancialData, 
+  fetchAlphaVantageData, 
+  fetchYahooFinanceData,
+  fetchStockRecommendations,
+  STOXX50_TICKERS,
+  SP500_TICKERS,
+  NASDAQ100_TICKERS
+} from './utils/apiUtils';
+
 // Also re-export utility functions that might be useful elsewhere
 export { 
   calculateStartDate, 
