@@ -1,4 +1,3 @@
-
 import React from "react";
 import {
   Card,
@@ -127,14 +126,6 @@ export const PortfolioOptimizerResults: React.FC<PortfolioOptimizerResultsProps>
     }
   };
   
-  // Calcular altura dinámica para el gráfico basado en cantidad de tickers
-  const getChartHeight = () => {
-    // Base height + additional height per ticker after 5
-    const baseHeight = 300;
-    const additionalHeight = Math.max(0, tickers.length - 5) * 20;
-    return baseHeight + additionalHeight;
-  };
-  
   return (
     <div className="space-y-6 mt-8">
       <h3 className="text-2xl font-bold">Resultados de la Optimización</h3>
@@ -221,7 +212,7 @@ export const PortfolioOptimizerResults: React.FC<PortfolioOptimizerResultsProps>
                     <XAxis type="number" />
                     <YAxis dataKey="name" type="category" />
                     <ChartTooltip content={<ChartTooltipContent />} />
-                    <Legend wrapperStyle={{ paddingTop: 15 }} />
+                    <Legend />
                     <Bar dataKey="current" name="Actual" fill="#3b82f6" />
                     <Bar dataKey="optimized" name="Optimizada" fill="#22c55e" />
                   </BarChart>
@@ -239,7 +230,7 @@ export const PortfolioOptimizerResults: React.FC<PortfolioOptimizerResultsProps>
           <CardDescription>Pesos actuales vs. optimizados</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className={`h-[${getChartHeight()}px]`} style={{ height: getChartHeight() }}>
+          <div className="h-80">
             <ChartContainer 
               config={{ 
                 current: { color: "#3b82f6" },
@@ -249,46 +240,16 @@ export const PortfolioOptimizerResults: React.FC<PortfolioOptimizerResultsProps>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={weightsComparisonData}
-                  margin={{ top: 5, right: 30, left: 20, bottom: tickers.length > 8 ? 60 : 40 }}
+                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="name" 
-                    tickMargin={15}
-                    height={tickers.length > 8 ? 80 : 60}
-                    interval={0}
-                    tick={(props) => {
-                      const { x, y, payload } = props;
-                      const tickCount = weightsComparisonData.length;
-                      // Si hay muchos tickers, rotar las etiquetas
-                      const rotate = tickCount > 5 ? -45 : 0;
-                      const textAnchor = tickCount > 5 ? "end" : "middle";
-                      const verticalAnchor = tickCount > 5 ? "middle" : "start";
-                      const tickY = tickCount > 5 ? y + 8 : y + 10;
-
-                      return (
-                        <g transform={`translate(${x},${tickY})`}>
-                          <text
-                            x={0}
-                            y={0}
-                            dy={0}
-                            textAnchor={textAnchor}
-                            fill="#666"
-                            fontSize={12}
-                            transform={`rotate(${rotate})`}
-                          >
-                            {payload.value}
-                          </text>
-                        </g>
-                      );
-                    }}
-                  />
+                  <XAxis dataKey="name" />
                   <YAxis tickFormatter={(value) => `${(value * 100).toFixed(0)}%`} />
                   <ChartTooltip 
                     formatter={(value: number) => `${(value * 100).toFixed(2)}%`}
                     content={<ChartTooltipContent />}
                   />
-                  <Legend wrapperStyle={{ paddingTop: 15 }} />
+                  <Legend />
                   <Bar dataKey="current" name="Actual" fill="#3b82f6" />
                   <Bar dataKey="optimized" name="Optimizada" fill="#22c55e" />
                 </BarChart>
@@ -296,7 +257,7 @@ export const PortfolioOptimizerResults: React.FC<PortfolioOptimizerResultsProps>
             </ChartContainer>
           </div>
           
-          <div className="mt-6">
+          <div className="mt-4">
             <Table>
               <TableHeader>
                 <TableRow>

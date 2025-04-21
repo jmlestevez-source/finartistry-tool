@@ -1,167 +1,237 @@
-// Valuation service
 
-import { FINANCIAL_MODELING_PREP_API_KEY } from '../constants';
-import { fetchFinancialData, fetchYahooFinanceData } from '../utils/apiUtils';
-import { transformFMPHistoricalData } from '../utils/dataTransformations';
-import { getTodayDate } from '../utils/dateUtils';
+// Stock valuation service
+
+import { FINANCIAL_MODELING_PREP_API_KEY, ALPHA_VANTAGE_API_KEY } from '../constants';
+import { fetchFinancialData, fetchAlphaVantageData } from '../utils/apiUtils';
+import { calculateStartDate, getTodayDate } from '../utils/dateUtils';
+import { calculateDailyReturns } from '../utils/dataTransformations';
+import { calculateVolatility } from '../utils/metricsCalculations';
+import { calculateMaxDrawdown } from '../utils/metricsCalculations';
+import { calculateValuationModels, findIndustryAverages } from './valuationModels';
 
 export const fetchStockValuation = async (ticker: string) => {
   try {
-    console.log(`Fetching valuation data for ${ticker}`);
+    console.log(`Fetching stock valuation data for ${ticker}`);
     
-    // Generar datos simulados para demostración ya que las llamadas directas a Yahoo Finance
-    // están bloqueadas por CORS en el entorno de desarrollo
-    console.log("Generando datos históricos simulados para valoración");
-    
-    // Fecha inicial para datos históricos (1 año atrás)
-    const startDate = new Date();
-    startDate.setFullYear(startDate.getFullYear() - 1);
-    const endDate = new Date();
-    const days = Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-    
-    // Crear datos simulados realistas
-    const historicalData: { date: string; price: number }[] = [];
-    
-    // Precio inicial realista para el ticker
-    let basePrice;
-    if (ticker === "AAPL") basePrice = 150;
-    else if (ticker === "MSFT") basePrice = 300;
-    else if (ticker === "GOOGL") basePrice = 2800;
-    else if (ticker === "AMZN") basePrice = 3300;
-    else if (ticker === "META") basePrice = 300;
-    else if (ticker === "TSLA") basePrice = 900;
-    else if (ticker === "SPY") basePrice = 420;
-    else if (ticker === "QQQ") basePrice = 380;
-    else basePrice = 100 + Math.random() * 900; // Para otros tickers
-    
-    let currentPrice = basePrice;
-    
-    // Generar serie temporal con volatilidad y tendencias realistas
-    for (let i = 0; i <= days; i++) {
-      const currentDate = new Date(startDate);
-      currentDate.setDate(startDate.getDate() + i);
-      
-      // No incluir fines de semana
-      if (currentDate.getDay() === 0 || currentDate.getDay() === 6) continue;
-      
-      const dateStr = currentDate.toISOString().split('T')[0];
-      
-      // Volatilidad personalizada según el activo
-      let volatility = 0.01; // Volatilidad base
-      
-      if (ticker === "TSLA" || ticker === "AMZN") volatility = 0.018; // Mayor volatilidad
-      else if (ticker === "SPY" || ticker === "QQQ") volatility = 0.008; // Menor volatilidad
-      
-      // Simular cambio de precio con componente aleatorio y tendencia
-      const trend = 0.0002; // Ligera tendencia alcista
-      const change = (Math.random() - 0.5) * volatility * 2 + trend;
-      currentPrice = currentPrice * (1 + change);
-      
-      historicalData.push({
-        date: dateStr,
-        price: currentPrice
-      });
-    }
-    
-    // Ordenar por fecha
-    const sortedHistoricalData = historicalData.sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    // 1. Obtener información general de la empresa
+    const companyInfoPromise = fetchFinancialData(
+      `https://financialmodelingprep.com/api/v3/profile/${ticker}`,
+      { apikey: FINANCIAL_MODELING_PREP_API_KEY }
     );
     
-    // Simular datos de valoración para demostración
-    const mockData = {
-      ticker: ticker,
-      companyInfo: {
-        name: `${ticker} Corporation`,
-        sector: "Tecnología",
-        industry: "Software",
-        marketCap: 500000000000,
-        currentPrice: sortedHistoricalData[sortedHistoricalData.length - 1].price
-      },
-      valuationModels: [
-        { name: "DCF", fairValue: sortedHistoricalData[sortedHistoricalData.length - 1].price * 1.13, upside: 0.13, description: "Flujos de caja descontados" },
-        { name: "P/E", fairValue: sortedHistoricalData[sortedHistoricalData.length - 1].price * 1.10, upside: 0.10, description: "Múltiplo de beneficios" },
-        { name: "P/B", fairValue: sortedHistoricalData[sortedHistoricalData.length - 1].price * 1.03, upside: 0.03, description: "Múltiplo de valor contable" },
-        { name: "EV/EBITDA", fairValue: sortedHistoricalData[sortedHistoricalData.length - 1].price * 1.15, upside: 0.15, description: "Múltiplo de EBITDA" },
-        { name: "DDM", fairValue: sortedHistoricalData[sortedHistoricalData.length - 1].price * 1.06, upside: 0.06, description: "Modelo de descuento de dividendos" }
-      ],
-      historicalPrices: sortedHistoricalData,
-      financialRatios: [
-        { name: "P/E", value: 25.3, industryAvg: 22.1 },
-        { name: "P/B", value: 8.7, industryAvg: 6.5 },
-        { name: "P/S", value: 12.4, industryAvg: 10.2 },
-        { name: "ROE", value: 0.35, industryAvg: 0.28 },
-        { name: "ROA", value: 0.18, industryAvg: 0.15 },
-        { name: "Margen neto", value: 0.21, industryAvg: 0.18 }
-      ],
-      growthRates: {
-        revenue: {
-          oneYear: 0.18,
-          threeYear: 0.15,
-          fiveYear: 0.13,
-          projected: 0.12
-        },
-        earnings: {
-          oneYear: 0.22,
-          threeYear: 0.19,
-          fiveYear: 0.16,
-          projected: 0.14
-        },
-        freeCashFlow: {
-          oneYear: 0.20,
-          threeYear: 0.17,
-          fiveYear: 0.15,
-          projected: 0.13
-        },
-        drivers: [
-          { name: "Innovación", contribution: 0.35 },
-          { name: "Expansión mercado", contribution: 0.25 },
-          { name: "Adquisiciones", contribution: 0.20 },
-          { name: "Eficiencia operativa", contribution: 0.15 },
-          { name: "Otros", contribution: 0.05 }
-        ]
-      },
-      riskMetrics: {
-        beta: 1.25,
-        volatility: 0.22,
-        sharpeRatio: 1.3,
-        maxDrawdown: 0.28,
-        valueAtRisk: 0.04,
-        correlations: [
-          { name: "S&P 500", value: 0.82 },
-          { name: "NASDAQ", value: 0.89 },
-          { name: "Sector Tech", value: 0.93 },
-          { name: "Bonos 10Y", value: -0.35 }
-        ],
-        riskFactors: [
-          { 
-            name: "Competencia", 
-            level: "Medio", 
-            description: "Competencia creciente en su segmento principal pero con ventajas competitivas sólidas." 
-          },
-          { 
-            name: "Regulación", 
-            level: "Alto", 
-            description: "Riesgo elevado de cambios regulatorios que podrían afectar su modelo de negocio." 
-          },
-          { 
-            name: "Tecnología", 
-            level: "Bajo", 
-            description: "Fuerte inversión en I+D y posición de liderazgo en innovación tecnológica." 
-          },
-          { 
-            name: "Financiero", 
-            level: "Bajo", 
-            description: "Balance sólido con baja deuda y alta generación de caja." 
-          }
-        ]
-      },
-      dataSource: 'Datos de demostración'
+    // 2. Obtener métricas financieras
+    const ratiosPromise = fetchFinancialData(
+      `https://financialmodelingprep.com/api/v3/ratios-ttm/${ticker}`,
+      { apikey: FINANCIAL_MODELING_PREP_API_KEY }
+    );
+    
+    // 3. Obtener datos históricos para gráfico de precios
+    const historicalPricesPromise = fetchFinancialData(
+      `https://financialmodelingprep.com/api/v3/historical-price-full/${ticker}`,
+      { apikey: FINANCIAL_MODELING_PREP_API_KEY, from: calculateStartDate('5y'), to: getTodayDate() }
+    );
+    
+    // 4. Obtener tasas de crecimiento
+    const growthRatesPromise = fetchFinancialData(
+      `https://financialmodelingprep.com/api/v3/financial-growth/${ticker}`,
+      { apikey: FINANCIAL_MODELING_PREP_API_KEY, limit: "5" } // Convertido a string para corregir el error TS2322
+    );
+    
+    // 5. Obtener promedios de la industria para comparación
+    const industryRatiosPromise = fetchFinancialData(
+      `https://financialmodelingprep.com/api/v4/industry_ratios`,
+      { apikey: FINANCIAL_MODELING_PREP_API_KEY }
+    );
+    
+    // Esperar a que todas las promesas se resuelvan
+    const [companyInfoResponse, ratiosResponse, historicalPricesResponse, growthRatesResponse, industryRatiosResponse] = 
+      await Promise.all([companyInfoPromise, ratiosPromise, historicalPricesPromise, growthRatesPromise, industryRatiosPromise]);
+    
+    // Procesar la información de la empresa
+    if (!companyInfoResponse || companyInfoResponse.length === 0) {
+      throw new Error(`No company info found for ${ticker}`);
+    }
+    
+    const companyInfo = {
+      name: companyInfoResponse[0].companyName,
+      sector: companyInfoResponse[0].sector || 'N/A',
+      industry: companyInfoResponse[0].industry || 'N/A',
+      marketCap: companyInfoResponse[0].mktCap || 0,
+      currentPrice: companyInfoResponse[0].price || 0
     };
     
-    return mockData;
+    // Procesar datos históricos
+    const historicalPrices = historicalPricesResponse?.historical?.map((item: any) => ({
+      date: item.date,
+      price: item.close
+    })) || [];
+    
+    // Procesar ratios financieros y compararlos con la industria
+    let financialRatios = [];
+    const industryAvg = findIndustryAverages(industryRatiosResponse, companyInfo.industry);
+    
+    if (ratiosResponse && ratiosResponse.length > 0) {
+      const ratios = ratiosResponse[0];
+      
+      financialRatios = [
+        { name: 'P/E', value: ratios.peRatioTTM || 0, industryAvg: industryAvg.peRatioTTM || 0 },
+        { name: 'P/B', value: ratios.priceToBookRatioTTM || 0, industryAvg: industryAvg.priceToBookRatioTTM || 0 },
+        { name: 'P/S', value: ratios.priceToSalesRatioTTM || 0, industryAvg: industryAvg.priceToSalesRatioTTM || 0 },
+        { name: 'EV/EBITDA', value: ratios.enterpriseValueMultipleTTM || 0, industryAvg: industryAvg.enterpriseValueMultipleTTM || 0 },
+        { name: 'ROE', value: ratios.returnOnEquityTTM || 0, industryAvg: industryAvg.returnOnEquityTTM || 0 },
+        { name: 'ROA', value: ratios.returnOnAssetsTTM || 0, industryAvg: industryAvg.returnOnAssetsTTM || 0 },
+        { name: 'Margen Neto', value: ratios.netProfitMarginTTM || 0, industryAvg: industryAvg.netProfitMarginTTM || 0 },
+      ];
+    } else {
+      // Valores por defecto si no hay datos
+      financialRatios = [
+        { name: 'P/E', value: 0, industryAvg: 0 },
+        { name: 'P/B', value: 0, industryAvg: 0 },
+        { name: 'P/S', value: 0, industryAvg: 0 },
+        { name: 'EV/EBITDA', value: 0, industryAvg: 0 },
+        { name: 'ROE', value: 0, industryAvg: 0 },
+        { name: 'ROA', value: 0, industryAvg: 0 },
+        { name: 'Margen Neto', value: 0, industryAvg: 0 },
+      ];
+    }
+    
+    // Procesar tasas de crecimiento
+    let growthRates = {
+      revenue: { oneYear: 0, threeYear: 0, fiveYear: 0, projected: 0 },
+      earnings: { oneYear: 0, threeYear: 0, fiveYear: 0, projected: 0 },
+      freeCashFlow: { oneYear: 0, threeYear: 0, fiveYear: 0, projected: 0 },
+      drivers: [
+        { name: 'Expansión', contribution: 0.4 },
+        { name: 'Precios', contribution: 0.3 },
+        { name: 'Nuevos Productos', contribution: 0.2 },
+        { name: 'Eficiencia', contribution: 0.1 },
+      ]
+    };
+    
+    if (growthRatesResponse && growthRatesResponse.length > 0) {
+      const growth = growthRatesResponse[0];
+      
+      growthRates.revenue.oneYear = growth.revenueGrowth || 0;
+      growthRates.earnings.oneYear = growth.epsgrowth || 0;
+      growthRates.freeCashFlow.oneYear = growth.freeCashFlowGrowth || 0;
+      
+      // Proyectar crecimiento futuro basado en histórico
+      growthRates.revenue.projected = growth.revenueGrowth * 0.8; // Asumimos que el crecimiento futuro será el 80% del histórico
+      growthRates.earnings.projected = growth.epsgrowth * 0.8;
+      growthRates.freeCashFlow.projected = growth.freeCashFlowGrowth * 0.8;
+      
+      // Si hay suficientes datos, calcular crecimiento a 3 y 5 años
+      if (growthRatesResponse.length >= 3) {
+        growthRates.revenue.threeYear = (Math.pow(
+          (1 + (growthRatesResponse[0].revenueGrowth || 0)) *
+          (1 + (growthRatesResponse[1].revenueGrowth || 0)) *
+          (1 + (growthRatesResponse[2].revenueGrowth || 0))
+        , 1/3) - 1) || 0;
+        
+        growthRates.earnings.threeYear = (Math.pow(
+          (1 + (growthRatesResponse[0].epsgrowth || 0)) *
+          (1 + (growthRatesResponse[1].epsgrowth || 0)) *
+          (1 + (growthRatesResponse[2].epsgrowth || 0))
+        , 1/3) - 1) || 0;
+        
+        growthRates.freeCashFlow.threeYear = (Math.pow(
+          (1 + (growthRatesResponse[0].freeCashFlowGrowth || 0)) *
+          (1 + (growthRatesResponse[1].freeCashFlowGrowth || 0)) *
+          (1 + (growthRatesResponse[2].freeCashFlowGrowth || 0))
+        , 1/3) - 1) || 0;
+      }
+      
+      if (growthRatesResponse.length >= 5) {
+        growthRates.revenue.fiveYear = (Math.pow(
+          growthRatesResponse.slice(0, 5).reduce((acc, curr) => acc * (1 + (curr.revenueGrowth || 0)), 1)
+        , 1/5) - 1) || 0;
+        
+        growthRates.earnings.fiveYear = (Math.pow(
+          growthRatesResponse.slice(0, 5).reduce((acc, curr) => acc * (1 + (curr.epsgrowth || 0)), 1)
+        , 1/5) - 1) || 0;
+        
+        growthRates.freeCashFlow.fiveYear = (Math.pow(
+          growthRatesResponse.slice(0, 5).reduce((acc, curr) => acc * (1 + (curr.freeCashFlowGrowth || 0)), 1)
+        , 1/5) - 1) || 0;
+      }
+    }
+    
+    // Calcular valores justos usando diferentes modelos
+    // Usar Alpha Vantage para obtener algunas métricas adicionales
+    const earningsPromise = fetchAlphaVantageData(
+      'EARNINGS',
+      { symbol: ticker, apikey: ALPHA_VANTAGE_API_KEY }
+    );
+    
+    const overviewPromise = fetchAlphaVantageData(
+      'OVERVIEW',
+      { symbol: ticker, apikey: ALPHA_VANTAGE_API_KEY }
+    );
+    
+    const [earningsData, overviewData] = await Promise.all([earningsPromise, overviewPromise]);
+    
+    // Calcular modelos de valoración
+    const valuationModels = calculateValuationModels(
+      companyInfo, 
+      ratiosResponse?.[0] || {}, 
+      earningsData, 
+      overviewData,
+      growthRates
+    );
+    
+    // Calcular métricas de riesgo
+    const beta = overviewData?.Beta ? parseFloat(overviewData.Beta as string) : (companyInfoResponse[0].beta || 1);
+    
+    // Usar datos de volatilidad histórica para métricas de riesgo
+    const dailyReturns = calculateDailyReturns(historicalPrices);
+    const volatility = calculateVolatility(dailyReturns);
+    
+    const riskMetrics = {
+      beta,
+      volatility,
+      sharpeRatio: (growthRates.earnings.oneYear || 0) / volatility, // Aproximación simple
+      maxDrawdown: calculateMaxDrawdown(historicalPrices),
+      valueAtRisk: -volatility * 1.65, // Aproximación de VaR al 95%
+      correlations: [
+        { name: 'S&P 500', value: 0.7 }, // Valores por defecto, idealmente se calcularían realmente
+        { name: 'Nasdaq', value: 0.75 },
+        { name: 'Russell 2000', value: 0.6 },
+        { name: '10Y Treasury', value: -0.2 },
+      ],
+      riskFactors: [
+        {
+          name: 'Riesgo de mercado',
+          level: beta > 1.3 ? 'Alto' : beta > 0.8 ? 'Medio' : 'Bajo',
+          description: 'Sensibilidad a los movimientos generales del mercado.'
+        },
+        {
+          name: 'Riesgo sectorial',
+          level: companyInfo.sector === 'Technology' || companyInfo.sector === 'Healthcare' ? 'Alto' : 'Medio',
+          description: 'Exposición a factores específicos del sector.'
+        },
+        {
+          name: 'Riesgo financiero',
+          level: (ratiosResponse?.[0]?.debtEquityRatioTTM || 0) > 1.5 ? 'Alto' : 'Medio',
+          description: 'Estructura de capital y sostenibilidad financiera.'
+        },
+        {
+          name: 'Riesgo legal/regulatorio',
+          level: ['Financial Services', 'Healthcare', 'Energy'].includes(companyInfo.sector) ? 'Alto' : 'Medio',
+          description: 'Exposición a cambios legales o regulatorios.'
+        }
+      ]
+    };
+    
+    return {
+      companyInfo,
+      valuationModels,
+      historicalPrices,
+      financialRatios,
+      growthRates,
+      riskMetrics
+    };
   } catch (error) {
-    console.error("Error fetching stock valuation:", error);
-    throw new Error(`Failed to fetch stock valuation: ${error instanceof Error ? error.message : String(error)}`);
+    console.error("Error fetching stock valuation data:", error);
+    throw new Error("Failed to fetch stock valuation data");
   }
 };

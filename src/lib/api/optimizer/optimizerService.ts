@@ -1,7 +1,6 @@
 // Portfolio optimizer service
 
 import { calculateMetrics, calculateCorrelationMatrix } from '../utils/metricsCalculations';
-import { fetchYahooFinanceData } from '../utils/apiUtils';
 
 // Define the optimizer model types
 export enum OptimizerModel {
@@ -24,14 +23,6 @@ export const fetchOptimizedPortfolio = async (
 ) => {
   try {
     console.log(`Optimizing portfolio using ${model} model`);
-    
-    // Obtener datos reales de Yahoo Finance para todos los tickers
-    const allTickers = [...new Set([...tickers, ...(universe || [])])];
-    const dataSource = "Yahoo Finance"; // Usar Yahoo Finance como fuente de datos
-    
-    // Aquí podríamos obtener datos reales, pero por simplificación usaremos datos simulados
-    // Si en el futuro implementamos la llamada real, sería algo como:
-    // const yahooData = await Promise.all(allTickers.map(t => fetchYahooFinanceData(t)));
     
     // Create mock metrics for demonstration purposes since we don't have real historical data
     const mockMetrics = createMockMetrics(tickers, universe || []);
@@ -88,8 +79,7 @@ export const fetchOptimizedPortfolio = async (
         current: currentMetrics,
         optimized: optimizedMetrics
       },
-      newSuggestions: optimizationResult.newSuggestions || [],
-      dataSource: dataSource // Añadir fuente de datos a la respuesta
+      newSuggestions: optimizationResult.newSuggestions || []
     };
   } catch (error) {
     console.error("Error optimizing portfolio:", error);

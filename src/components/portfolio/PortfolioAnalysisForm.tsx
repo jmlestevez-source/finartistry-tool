@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/card";
 import { PortfolioAnalysisResults } from "./PortfolioAnalysisResults";
 import { fetchPortfolioData } from "@/lib/api/financeAPI";
-import { Loader2, Info } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
 import {
@@ -24,56 +24,32 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-interface PortfolioData {
-  performanceChart: any[];
-  correlationMatrix: number[][];
-  metrics: {
-    annualReturn: number;
-    volatility: number;
-    sharpeRatio: number;
-    maxDrawdown: number;
-    alpha: number;
-    beta: number;
-  };
-  stockMetrics: Record<string, any>;
-  dataSource?: string;
-}
-
 const PortfolioAnalysisForm = () => {
   const [tickers, setTickers] = useState("");
   const [weights, setWeights] = useState("");
   const [benchmark, setBenchmark] = useState("SPY");
   const [period, setPeriod] = useState("5y");
   const [isLoading, setIsLoading] = useState(false);
-  const [portfolioData, setPortfolioData] = useState<PortfolioData | null>(null);
+  const [portfolioData, setPortfolioData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
-  const [dataSource, setDataSource] = useState<string>("");
   
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setDataSource("");
-    setPortfolioData(null);
     
     const tickersList = tickers.split(",").map(t => t.trim().toUpperCase());
     
-    if (tickersList.length === 0 || tickersList[0] === "") {
-      toast({
-        title: "Error en la entrada",
-        description: "Por favor, ingrese al menos un ticker.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
+    // Parse weights if provided, otherwise assume equal weights
     let weightsList: number[] = [];
     if (weights.trim() === "") {
+      // Equal weights
       weightsList = tickersList.map(() => 1 / tickersList.length);
     } else {
       try {
         weightsList = weights.split(",").map(w => parseFloat(w.trim()));
+        // Normalize weights if they don't sum to 1
         const sum = weightsList.reduce((acc, val) => acc + val, 0);
         if (Math.abs(sum - 1) > 0.001 && sum > 0) {
           weightsList = weightsList.map(w => w / sum);
@@ -88,6 +64,7 @@ const PortfolioAnalysisForm = () => {
       }
     }
     
+    // Check if tickers and weights have the same length
     if (tickersList.length !== weightsList.length) {
       toast({
         title: "Error en la entrada",
@@ -101,26 +78,30 @@ const PortfolioAnalysisForm = () => {
     
     try {
       toast({
-        title: "Cargando datos",
-        description: `Obteniendo datos para ${tickersList.join(', ')}...`,
+        title: "Conectando con API financiera",
+        description: `Obteniendo datos para ${tickersList.join(', ')} en período ${period}...`,
       });
       
       const data = await fetchPortfolioData(tickersList, weightsList, benchmark, period);
       
-      setPortfolioData(data);
+      // Verificar si alguna acción tiene un rendimiento de 0
+      const zeroReturnStocks = Object.entries(data.stockMetrics)
+        .filter(([ticker, metrics]: [string, any]) => metrics.annualReturn === 0 && ticker !== benchmark)
+        .map(([ticker]: [string, any]) => ticker);
       
-      if (data.dataSource) {
-        setDataSource(data.dataSource);
+      if (zeroReturnStocks.length > 0) {
         toast({
-          title: "Fuente de datos",
-          description: `${data.dataSource}`,
+          title: "Advertencia",
+          description: `Es posible que no haya suficientes datos para ${zeroReturnStocks.join(', ')} en el período ${period}. Los cálculos pueden no ser precisos.`,
           variant: "default"
         });
       }
       
+      setPortfolioData(data);
+      
       toast({
-        title: "¡Datos cargados!",
-        description: `Se han cargado los datos para su cartera.`,
+        title: "¡Datos obtenidos!",
+        description: `Se han cargado los datos de la cartera.`,
         variant: "default"
       });
     } catch (error: any) {
@@ -207,16 +188,6 @@ const PortfolioAnalysisForm = () => {
           )}
         </Button>
       </form>
-      
-      {dataSource && (
-        <Alert variant="default" className="bg-yellow-50 dark:bg-yellow-950 border-yellow-200">
-          <Info className="h-4 w-4" />
-          <AlertTitle>Fuente de datos</AlertTitle>
-          <AlertDescription>
-            {dataSource}
-          </AlertDescription>
-        </Alert>
-      )}
       
       {error && (
         <Alert variant="destructive">

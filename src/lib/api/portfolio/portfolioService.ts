@@ -2,7 +2,7 @@
 // Portfolio analysis service
 
 import { FINANCIAL_MODELING_PREP_API_KEY } from '../constants';
-import { fetchYahooFinanceData } from '../utils/apiUtils';
+import { fetchFinancialData } from '../utils/apiUtils';
 import { 
   calculateStartDate, 
   getTodayDate, 
@@ -29,60 +29,60 @@ export const fetchPortfolioData = async (
     console.log(`Fetching portfolio data for ${tickers.join(', ')} with benchmark ${benchmark} for period ${period}`);
     
     // Incluir el benchmark en la lista de tickers si no está ya
-    let allTickers = tickers.includes(benchmark) ? tickers : [...tickers, benchmark];
-    let portfolioWeights = tickers.includes(benchmark) ? weights : [...weights, 0];
+    let allTickers = tickers;
+    let portfolioWeights = [...weights];
     
-    // Calcular las fechas basadas en el período solicitado
-    const startDate = calculateStartDate(period);
-    const endDate = getTodayDate();
-    
-    console.log(`Intentando obtener datos históricos desde Yahoo Finance para el período ${startDate} a ${endDate}`);
-    
-    // Crear datos simulados para propósitos de demostración
-    // En producción, esto se reemplazaría con datos reales de una API
-    const historicalData: any[] = [];
-    
-    // Simular datos diarios para el período seleccionado
-    const currentDate = new Date(startDate);
-    const endDateTime = new Date(endDate).getTime();
-    
-    while (currentDate.getTime() <= endDateTime) {
-      const dateStr = currentDate.toISOString().split('T')[0];
-      const dataPoint: any = { date: dateStr };
-      
-      // Simular precios para cada ticker
-      allTickers.forEach(ticker => {
-        // Generar un precio base aleatorio entre 50 y 500
-        const basePrice = 50 + Math.random() * 450;
-        
-        // Añadir variación diaria (-2% a +2%)
-        const dailyChange = (Math.random() * 4 - 2) / 100;
-        
-        // Precio del día
-        dataPoint[ticker] = basePrice * (1 + dailyChange);
-      });
-      
-      historicalData.push(dataPoint);
-      
-      // Avanzar un día
-      currentDate.setDate(currentDate.getDate() + 1);
+    if (!tickers.includes(benchmark)) {
+      allTickers = [...tickers, benchmark];
+      // Añadir peso 0 para el benchmark en el cálculo del portafolio
+      portfolioWeights = [...weights, 0];
     }
     
-    // Ordenar datos de más antiguo a más reciente
-    historicalData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    // Obtener datos históricos para cada ticker
+    const historicalDataPromises = allTickers.map(ticker => 
+      fetchFinancialData(
+        `https://financialmodelingprep.com/api/v3/historical-price-full/${ticker}`, 
+        { apikey: FINANCIAL_MODELING_PREP_API_KEY, from: calculateStartDate(period), to: getTodayDate() }
+      )
+    );
     
-    // Verificar que tenemos datos
-    if (!historicalData || historicalData.length === 0) {
-      throw new Error("No se pudieron obtener datos históricos para los tickers seleccionados.");
+    const historicalDataResponses = await Promise.all(historicalDataPromises);
+    
+    // Procesar y combinar datos históricos
+    let combinedData: any = {};
+    const tickersWithData: string[] = [];
+    
+    historicalDataResponses.forEach((response, index) => {
+      const ticker = allTickers[index];
+      if (response && response.historical && response.historical.length > 0) {
+        const transformedData = transformFMPHistoricalData(response.historical, ticker);
+        tickersWithData.push(ticker);
+        
+        transformedData.forEach((item: any) => {
+          if (!combinedData[item.date]) {
+            combinedData[item.date] = { date: item.date };
+          }
+          combinedData[item.date][ticker] = item[ticker];
+        });
+      } else {
+        console.warn(`No historical data available for ${ticker}`);
+      }
+    });
+    
+    // Convertir a array y ordenar por fecha
+    const sortedHistoricalData = Object.values(combinedData)
+      .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    
+    if (sortedHistoricalData.length === 0) {
+      throw new Error("No historical data available for the specified period");
     }
-
-    // Si llegamos aquí, se obtuvieron datos correctamente
+    
     // Calcular retornos diarios
-    const dailyReturns = calculateDailyReturns(historicalData);
+    const dailyReturns = calculateDailyReturns(sortedHistoricalData);
     
-    // Verificar que tenemos datos de retornos diarios
-    if (!dailyReturns || dailyReturns.length === 0) {
-      throw new Error("No se pudieron calcular los retornos diarios.");
+    // Verificar que hay datos suficientes para continuar
+    if (dailyReturns.length === 0) {
+      throw new Error("No se pudieron calcular los retornos diarios. Intente con un período más reciente.");
     }
     
     // Calcular retornos acumulados
@@ -106,14 +106,14 @@ export const fetchPortfolioData = async (
       return {
         date: day.date,
         portfolio: portfolioValue,
-        benchmark: day[benchmark] || 0
+        benchmark: day[benchmark]
       };
     });
     
     // Calcular métricas (rendimiento anual, volatilidad, etc.)
     const metrics = calculateMetrics(dailyReturns);
     
-    // Inicializar las métricas del portafolio
+    // Inicializar las métricas del portafolio antes de usarlas
     const portfolioMetrics = {
       annualReturn: 0,
       volatility: 0,
@@ -144,7 +144,7 @@ export const fetchPortfolioData = async (
         
         // Si todavía es 0, puede que no haya suficientes datos
         if (metrics[ticker].annualReturn === 0) {
-          console.warn(`No se pudieron calcular métricas para ${ticker}, verifique que hay suficientes datos`);
+          console.warn(`No se pudieron calcular métricas para ${ticker}, usando valores por defecto`);
         }
       }
     });
@@ -174,19 +174,19 @@ export const fetchPortfolioData = async (
             : 0;
           
           return innerAcc + weight * innerWeight * correlation * 
-            (metrics[allTickers[i]].volatility || 0) * (metrics[allTickers[j]].volatility || 0);
+            metrics[allTickers[i]].volatility * metrics[allTickers[j]].volatility;
         }, 0);
       }, 0)
     );
     
     portfolioMetrics.maxDrawdown = Math.min(...portfolioPerformance.map((day: any, idx: number, arr: any[]) => {
       if (idx === 0) return 0;
-      const maxPrevValue = Math.max(...arr.slice(0, idx).map((d: any) => d.portfolio || 0));
-      return maxPrevValue > 0 ? (day.portfolio / maxPrevValue) - 1 : 0;
+      const maxPrevValue = Math.max(...arr.slice(0, idx).map((d: any) => d.portfolio));
+      return day.portfolio / maxPrevValue - 1;
     }));
     
     portfolioMetrics.alpha = metrics[benchmark] ? 
-      portfolioMetrics.annualReturn - (metrics[benchmark].annualReturn || 0) : 0;
+      portfolioMetrics.annualReturn - metrics[benchmark].annualReturn : 0;
     
     // Calcular Sharpe Ratio del portafolio solo si la volatilidad es > 0
     portfolioMetrics.sharpeRatio = portfolioMetrics.volatility > 0 ? 
@@ -205,11 +205,10 @@ export const fetchPortfolioData = async (
           beta: ticker === benchmark ? 1 : 0,
           alpha: 0
         }])
-      ),
-      dataSource: "Datos de demostración"
+      )
     };
   } catch (error) {
     console.error("Error fetching portfolio data:", error);
-    throw new Error(`Failed to fetch portfolio data: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error("Failed to fetch portfolio data");
   }
 };
